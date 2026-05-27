@@ -12,3 +12,6 @@ __pycache__/
 # Cache do mypy e ruff
 .mypy_cache/
 .ruff_cache/
+
+# Metadata gerado pelo pip install -e
+*.egg-info/

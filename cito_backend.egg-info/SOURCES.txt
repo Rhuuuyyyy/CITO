@@ -1,7 +1,0 @@
-README.md
-pyproject.toml
-cito_backend.egg-info/PKG-INFO
-cito_backend.egg-info/SOURCES.txt
-cito_backend.egg-info/dependency_links.txt
-cito_backend.egg-info/requires.txt
-cito_backend.egg-info/top_level.txt
