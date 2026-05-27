@@ -83,3 +83,44 @@ def _sign(message: str, secret: str) -> str:
     message = f"{header}.{payload}"
     signature = _sign(message, _settings.secret_key)
     return f"{message}.{signature}"
+
+    def verify_access_token(token: str) -> TokenClaims:
+    """Verify a JWT and return its claims.
+
+    Raises:
+        JWTError: If the token is invalid, expired, or tampered.
+    """
+    parts = token.split(".")
+    if len(parts) != 3:
+        raise JWTError("Malformed JWT: expected 3 parts")
+
+    header, payload_b64, signature = parts
+    message = f"{header}.{payload_b64}"
+    expected_sig = _sign(message, _settings.secret_key)
+
+    # Constant-time comparison to prevent timing attacks
+    if not hmac.compare_digest(signature, expected_sig):
+        raise JWTError("JWT signature verification failed")
+
+    try:
+        claims_raw = json.loads(_b64url_decode(payload_b64))
+    except Exception as exc:
+        raise JWTError("JWT payload decode failed") from exc
+
+    exp = claims_raw.get("exp")
+    if exp is None or time.time() > float(exp):
+        raise JWTError("JWT has expired or missing exp claim")
+
+    usuario_id_raw = claims_raw.get("sub")
+    role = claims_raw.get("role")
+    sessao_id = claims_raw.get("sid")
+
+    if not all([usuario_id_raw, role, sessao_id]):
+        raise JWTError("Missing required claims in token")
+
+    return TokenClaims(
+        usuario_id=int(str(usuario_id_raw)),
+        role=str(role),
+        sessao_id=int(str(sessao_id)),
+        exp=float(exp),
+    )
