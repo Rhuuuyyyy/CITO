@@ -52,3 +52,34 @@ def _sign(message: str, secret: str) -> str:
         hashlib.sha256,
     ).digest()
     return _b64url_encode(sig)
+
+    def issue_access_token(
+    *,
+    usuario_id: int,
+    role: str,
+    sessao_id: int,
+    ttl_seconds: int = _ACCESS_TOKEN_TTL_SECONDS,
+) -> str:
+    """Issue a signed HS256 JWT access token."""
+    now = time.time()
+    header = _b64url_encode(
+        json.dumps(
+            {"alg": _ALGORITHM, "typ": "JWT"},
+            separators=(",", ":"),
+        ).encode()
+    )
+    payload = _b64url_encode(
+        json.dumps(
+            {
+                "sub": str(usuario_id),
+                "role": role,
+                "sid": sessao_id,
+                "iat": int(now),
+                "exp": int(now + ttl_seconds),
+            },
+            separators=(",", ":"),
+        ).encode()
+    )
+    message = f"{header}.{payload}"
+    signature = _sign(message, _settings.secret_key)
+    return f"{message}.{signature}"
