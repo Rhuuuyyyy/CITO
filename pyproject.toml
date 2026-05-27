@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Backend API for the Fragile X Syndrome diagnostic and management platform."
 readme = "README.md"
 requires-python = ">=3.11"
-licence = { text = "Propietary" }
+license = { text = "Propietary" }
 authors = [{ name = "CITO Backend Team" }]
 
 dependencies = [
