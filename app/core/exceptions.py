@@ -6,7 +6,7 @@ The domain layer NEVER raises fastapi.HTTPException — it raises these instead.
 
 
 class SXFpError(Exception):
-    code: str = "sxfp.error"
+    code: str = "cito.error"
 
 
 class DomainError(SXFpError):
