@@ -1,0 +1,14 @@
+# Ambiente virtual
+.venv/
+
+# Arquivos de configuração local com senhas
+.env
+
+# Cache do Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Cache do mypy e ruff
+.mypy_cache/
+.ruff_cache/
