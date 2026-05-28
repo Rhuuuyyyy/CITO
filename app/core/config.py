@@ -29,6 +29,7 @@ cors_origins: list[str] = Field(default_factory=list)
 
 database_url: SecretStr = Field(
     default=SecretStr("postgresql+asyncpg://localhost/cito")
+    # DEVE SER COLOCADO O LINK DO BANCO DE DADOS AQUI.
 )
 pgp_key: SecretStr = Field(default=SecretStr("change-me-pgp-key"))
 
