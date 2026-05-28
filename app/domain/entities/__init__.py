@@ -1,0 +1,1 @@
+"""Domain entities (objetcs with entities and lifecycle)."""

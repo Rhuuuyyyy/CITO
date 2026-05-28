@@ -1,0 +1,1 @@
+"""Value objects (immutable, equality by value: CPF, Score)."""
