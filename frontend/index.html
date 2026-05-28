@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CITO — Pré-diagnóstico SXF</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Pre-apply theme from localStorage so initial paint has correct colors
+    (function() {
+      try {
+        var t = localStorage.getItem('cito-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      /* CITO tokens — strictly black & white */
+      --paper:      #FFFFFF;
+      --paper-2:    #F4F4F4;
+      --surface:    #FFFFFF;
+      --surface-2:  #FAFAFA;
+      --ink:        #0A0A0A;
+      --ink-2:      #1F1F1F;
+      --muted:      #6B6B6B;
+      --subtle:     #A1A1A1;
+      --hair:       #E5E5E5;
+      --hair-soft:  #EFEFEF;
+      --on-ink:     #FFFFFF;        /* text on --ink surface */
+      --on-ink-55:  rgba(255,255,255,0.55);
+      --on-ink-35:  rgba(255,255,255,0.35);
+      --on-ink-14:  rgba(255,255,255,0.14);
+      --on-ink-08:  rgba(255,255,255,0.08);
+      --hover-tint: rgba(10,10,10,0.04);
+      --topbar-bg:  rgba(255,255,255,0.85);
+      /* status accents — neutral grayscale only */
+      --honey:      #525252;
+      --honey-soft: #EFEFEF;
+      --sage:       #6B6B6B;
+      --sage-soft:  #F4F4F4;
+      --rust:       #0A0A0A;
+      --rust-soft:  #F0F0F0;
+    }
+
+    [data-theme="dark"] {
+      --paper:      #0A0A0A;
+      --paper-2:    #161616;
+      --surface:    #141414;
+      --surface-2:  #1C1C1C;
+      --ink:        #F5F5F5;        /* now light — text + emphasis bg */
+      --ink-2:      #E5E5E5;
+      --muted:      #909090;
+      --subtle:     #5A5A5A;
+      --hair:       #2A2A2A;
+      --hair-soft:  #1F1F1F;
+      --on-ink:     #0A0A0A;        /* text on light emphasis surface */
+      --on-ink-55:  rgba(10,10,10,0.62);
+      --on-ink-35:  rgba(10,10,10,0.42);
+      --on-ink-14:  rgba(10,10,10,0.18);
+      --on-ink-08:  rgba(10,10,10,0.10);
+      --hover-tint: rgba(245,245,245,0.06);
+      --topbar-bg:  rgba(10,10,10,0.85);
+      --honey:      #A8A8A8;
+      --honey-soft: #1F1F1F;
+      --sage:       #909090;
+      --sage-soft:  #1C1C1C;
+      --rust:       #F5F5F5;
+      --rust-soft:  #1F1F1F;
+    }
+
+    [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #2A2A2A; border-color: var(--paper); }
+    [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #404040; }
+    [data-theme="dark"] ::selection { background: #F5F5F5; color: #0A0A0A; }
+
+    [data-theme="dark"] .card-shadow {
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.02),
+        0 4px 16px -6px rgba(0,0,0,0.5);
+    }
+    [data-theme="dark"] .card-shadow-hover:hover {
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.04),
+        0 12px 28px -10px rgba(0,0,0,0.7);
+    }
+
+    /* Cat silhouettes from the logo: keep them as-is in light mode; invert in dark mode */
+    [data-theme="dark"] .cito-cat-img { filter: invert(1); }
+    [data-theme="dark"] .cito-logo-img:not(.on-ink) { filter: invert(1); }
+    /* Cat/logo placed on a --ink (always-inverted) surface: invert in LIGHT mode instead */
+    .cito-logo-img.on-ink, .cito-cat-img.on-ink { filter: invert(1); }
+    [data-theme="dark"] .cito-logo-img.on-ink, [data-theme="dark"] .cito-cat-img.on-ink { filter: none; }
+    .cito-cat-row .cito-cat-img { display: block; }
+
+    /* Native date/time input picker indicator — invert in dark mode so it's visible */
+    [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+    [data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      opacity: 0.7;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+    }
+
+    html, body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Geist', ui-sans-serif, sans-serif;
+      font-feature-settings: 'ss01', 'cv11';
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .font-display {
+      font-family: 'Geist', ui-sans-serif, sans-serif;
+      font-weight: 500;
+      letter-spacing: -0.025em;
+    }
+    .font-mono { font-family: 'Geist Mono', ui-monospace, monospace; }
+
+    /* Paper grain texture - flat white */
+    .paper-bg {
+      background-color: var(--paper);
+    }
+
+    .card-shadow {
+      box-shadow:
+        0 1px 0 rgba(0,0,0,0.02),
+        0 4px 12px -6px rgba(0,0,0,0.05),
+        0 1px 2px rgba(0,0,0,0.02);
+    }
+    .card-shadow-hover:hover {
+      box-shadow:
+        0 1px 0 rgba(0,0,0,0.02),
+        0 12px 28px -10px rgba(0,0,0,0.08),
+        0 2px 4px rgba(0,0,0,0.02);
+      transform: translateY(-2px);
+    }
+
+    /* Decorative tail curves */
+    .tail-divider {
+      stroke: var(--hair);
+      fill: none;
+      stroke-width: 1;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--hair); border-radius: 8px; border: 2px solid var(--paper); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--subtle); }
+
+    /* Focus ring */
+    .focus-ink:focus { outline: none; border-color: var(--ink) !important; box-shadow: 0 0 0 4px rgba(14,14,16,0.06); }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes purrPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.5); opacity: 0.6; }
+    }
+    .anim-fade-up { animation: fadeUp 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .anim-fade-in { animation: fadeIn 0.4s ease; }
+
+    /* Selection */
+    ::selection { background: #0A0A0A; color: #fff; }
+
+    /* Number ticker style */
+    .num-tabular { font-variant-numeric: tabular-nums; }
+
+    /* Hover lift utility */
+    .lift { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease; }
+
+    /* Whisker accent line */
+    .whisker {
+      background: linear-gradient(90deg, transparent 0%, var(--ink) 12%, var(--ink) 88%, transparent 100%);
+      height: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Foundation: React hooks alias + icon library -->
+  <script type="text/babel" data-presets="react" src="src/icons.jsx"></script>
+
+  <!-- Shared components -->
+  <script type="text/babel" data-presets="react" src="src/components/Logo.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/components/Base.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/components/ThemeToggle.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/components/CalendarWidget.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/components/Sidebar.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/components/Topbar.jsx"></script>
+
+  <!-- Pages -->
+  <script type="text/babel" data-presets="react" src="src/pages/Dashboard.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/pages/Agenda.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/pages/Pacientes.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/pages/Config.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/pages/Triagem.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/pages/Login.jsx"></script>
+
+  <!-- App shell + mount -->
+  <script type="text/babel" data-presets="react" src="src/App.jsx"></script>
+</body>
+</html>

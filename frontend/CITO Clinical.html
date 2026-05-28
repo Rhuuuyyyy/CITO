@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CITO — Pré-diagnóstico SXF</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // Pre-apply theme from localStorage so initial paint has correct colors
+    (function() {
+      try {
+        var t = localStorage.getItem('cito-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {}
+    })();
+  </script>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      /* CITO tokens — strictly black & white */
+      --paper:      #FFFFFF;
+      --paper-2:    #F4F4F4;
+      --surface:    #FFFFFF;
+      --surface-2:  #FAFAFA;
+      --ink:        #0A0A0A;
+      --ink-2:      #1F1F1F;
+      --muted:      #6B6B6B;
+      --subtle:     #A1A1A1;
+      --hair:       #E5E5E5;
+      --hair-soft:  #EFEFEF;
+      --on-ink:     #FFFFFF;        /* text on --ink surface */
+      --on-ink-55:  rgba(255,255,255,0.55);
+      --on-ink-35:  rgba(255,255,255,0.35);
+      --on-ink-14:  rgba(255,255,255,0.14);
+      --on-ink-08:  rgba(255,255,255,0.08);
+      --hover-tint: rgba(10,10,10,0.04);
+      --topbar-bg:  rgba(255,255,255,0.85);
+      /* status accents — neutral grayscale only */
+      --honey:      #525252;
+      --honey-soft: #EFEFEF;
+      --sage:       #6B6B6B;
+      --sage-soft:  #F4F4F4;
+      --rust:       #0A0A0A;
+      --rust-soft:  #F0F0F0;
+    }
+
+    [data-theme="dark"] {
+      --paper:      #0A0A0A;
+      --paper-2:    #161616;
+      --surface:    #141414;
+      --surface-2:  #1C1C1C;
+      --ink:        #F5F5F5;        /* now light — text + emphasis bg */
+      --ink-2:      #E5E5E5;
+      --muted:      #909090;
+      --subtle:     #5A5A5A;
+      --hair:       #2A2A2A;
+      --hair-soft:  #1F1F1F;
+      --on-ink:     #0A0A0A;        /* text on light emphasis surface */
+      --on-ink-55:  rgba(10,10,10,0.62);
+      --on-ink-35:  rgba(10,10,10,0.42);
+      --on-ink-14:  rgba(10,10,10,0.18);
+      --on-ink-08:  rgba(10,10,10,0.10);
+      --hover-tint: rgba(245,245,245,0.06);
+      --topbar-bg:  rgba(10,10,10,0.85);
+      --honey:      #A8A8A8;
+      --honey-soft: #1F1F1F;
+      --sage:       #909090;
+      --sage-soft:  #1C1C1C;
+      --rust:       #F5F5F5;
+      --rust-soft:  #1F1F1F;
+    }
+
+    [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #2A2A2A; border-color: var(--paper); }
+    [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #404040; }
+    [data-theme="dark"] ::selection { background: #F5F5F5; color: #0A0A0A; }
+
+    [data-theme="dark"] .card-shadow {
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.02),
+        0 4px 16px -6px rgba(0,0,0,0.5);
+    }
+    [data-theme="dark"] .card-shadow-hover:hover {
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.04),
+        0 12px 28px -10px rgba(0,0,0,0.7);
+    }
+
+    /* Cat silhouettes from the logo: keep them as-is in light mode; invert in dark mode */
+    [data-theme="dark"] .cito-cat-img { filter: invert(1); }
+    [data-theme="dark"] .cito-logo-img:not(.on-ink) { filter: invert(1); }
+    /* Cat/logo placed on a --ink (always-inverted) surface: invert in LIGHT mode instead */
+    .cito-logo-img.on-ink, .cito-cat-img.on-ink { filter: invert(1); }
+    [data-theme="dark"] .cito-logo-img.on-ink, [data-theme="dark"] .cito-cat-img.on-ink { filter: none; }
+    .cito-cat-row .cito-cat-img { display: block; }
+
+    /* Native date/time input picker indicator — invert in dark mode so it's visible */
+    [data-theme="dark"] input[type="date"]::-webkit-calendar-picker-indicator,
+    [data-theme="dark"] input[type="time"]::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      opacity: 0.7;
+    }
+    input[type="date"]::-webkit-calendar-picker-indicator,
+    input[type="time"]::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+    }
+
+    html, body {
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'Geist', ui-sans-serif, sans-serif;
+      font-feature-settings: 'ss01', 'cv11';
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .font-display {
+      font-family: 'Geist', ui-sans-serif, sans-serif;
+      font-weight: 500;
+      letter-spacing: -0.025em;
+    }
+    .font-mono { font-family: 'Geist Mono', ui-monospace, monospace; }
+
+    /* Paper grain texture - flat white */
+    .paper-bg {
+      background-color: var(--paper);
+    }
+
+    .card-shadow {
+      box-shadow:
+        0 1px 0 rgba(0,0,0,0.02),
+        0 4px 12px -6px rgba(0,0,0,0.05),
+        0 1px 2px rgba(0,0,0,0.02);
+    }
+    .card-shadow-hover:hover {
+      box-shadow:
+        0 1px 0 rgba(0,0,0,0.02),
+        0 12px 28px -10px rgba(0,0,0,0.08),
+        0 2px 4px rgba(0,0,0,0.02);
+      transform: translateY(-2px);
+    }
+
+    /* Decorative tail curves */
+    .tail-divider {
+      stroke: var(--hair);
+      fill: none;
+      stroke-width: 1;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 10px; height: 10px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--hair); border-radius: 8px; border: 2px solid var(--paper); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--subtle); }
+
+    /* Focus ring */
+    .focus-ink:focus { outline: none; border-color: var(--ink) !important; box-shadow: 0 0 0 4px rgba(14,14,16,0.06); }
+
+    /* Animations */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes purrPulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.5); opacity: 0.6; }
+    }
+    .anim-fade-up { animation: fadeUp 0.32s cubic-bezier(0.2, 0.8, 0.2, 1); }
+    .anim-fade-in { animation: fadeIn 0.4s ease; }
+
+    /* Selection */
+    ::selection { background: #0A0A0A; color: #fff; }
+
+    /* Number ticker style */
+    .num-tabular { font-variant-numeric: tabular-nums; }
+
+    /* Hover lift utility */
+    .lift { transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background-color 0.18s ease; }
+
+    /* Whisker accent line */
+    .whisker {
+      background: linear-gradient(90deg, transparent 0%, var(--ink) 12%, var(--ink) 88%, transparent 100%);
+      height: 1px;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useEffect, useMemo } = React;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ICONS — thin, fluid stroke matching feline elegance
+    // ═══════════════════════════════════════════════════════════════════════
+    const Icon = {
+      grid: (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/>
+          <rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/>
+          <rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/>
+          <rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/>
+        </svg>
+      ),
+      calendar: (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <rect x="3" y="5" width="18" height="16" rx="2.5"/>
+          <line x1="16" y1="3" x2="16" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/>
+          <line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+      ),
+      users: (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-1.5a3.5 3.5 0 00-3.5-3.5h-7A3.5 3.5 0 003 19.5V21"/>
+          <circle cx="10" cy="8" r="3.5"/>
+          <path d="M21 21v-1.5a3.5 3.5 0 00-2.5-3.35"/>
+          <path d="M16 4.5a3.5 3.5 0 010 7"/>
+        </svg>
+      ),
+      settings: (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+      ),
+      file: (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+      ),
+      phone: (
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
+        </svg>
+      ),
+      bell: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+          <path d="M6 8a6 6 0 1112 0c0 7 3 9 3 9H3s3-2 3-9"/>
+          <path d="M10.3 21a1.94 1.94 0 003.4 0"/>
+        </svg>
+      ),
+      search: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+          <circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.65" y2="16.65"/>
+        </svg>
+      ),
+      plus: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+      ),
+      chevronRight: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="9 18 15 12 9 6"/>
+        </svg>
+      ),
+      chevronLeft: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+      ),
+      chevronDown: (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      ),
+      check: (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      ),
+      x: (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      ),
+      logout: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+      ),
+      sparkle: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>
+        </svg>
+      ),
+      heart: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+        </svg>
+      ),
+      print: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+          <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+          <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+      ),
+      sun: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+        </svg>
+      ),
+      moon: (
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
+        </svg>
+      ),
+      cat: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="5" y="4" width="14" height="17" rx="2"/>
+          <path d="M9 4h6v2.5H9z" fill="currentColor" stroke="none"/>
+          <polyline points="9 13 11 15 15 11"/>
+        </svg>
+      ),
+    };
+
+    // THEME TOGGLE — segmented switch
+    function ThemeToggle({ theme, onToggle }) {
+      const isDark = theme === 'dark';
+      return (
+        <button onClick={onToggle}
+          aria-label={isDark ? 'Ativar modo claro' : 'Ativar modo escuro'}
+          title={isDark ? 'Modo claro' : 'Modo escuro'}
+          className="relative h-10 w-[68px] rounded-full lift flex items-center px-1"
+          style={{ background: 'var(--surface)', border: '1px solid var(--hair)' }}>
+          <span className="absolute top-1/2 -translate-y-1/2 w-8 h-8 rounded-full flex items-center justify-center"
+            style={{
+              left: isDark ? 'calc(100% - 36px)' : '4px',
+              background: 'var(--ink)',
+              color: 'var(--on-ink)',
+              transition: 'left 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), background 0.2s',
+            }}>
+            {isDark ? Icon.moon : Icon.sun}
+          </span>
+          <span className="absolute left-2.5" style={{ color: 'var(--subtle)', visibility: isDark ? 'visible' : 'hidden' }}>{Icon.sun}</span>
+          <span className="absolute right-2.5" style={{ color: 'var(--subtle)', visibility: isDark ? 'hidden' : 'visible' }}>{Icon.moon}</span>
+        </button>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // LOGO — actual cito wordmark image
+    // ═══════════════════════════════════════════════════════════════════════
+    function CitoLogo({ size = 40 }) {
+      return (
+        <img src="assets/cito-tight.png" alt="cito" style={{ height: size, width: 'auto', display: 'block' }}
+          className="cito-logo-img select-none pointer-events-none" />
+      );
+    }
+
+    // Row of four sitting cats — uses the actual logo cat slices
+    function CatRow({ className = "", height = 24, gap = 8 }) {
+      return (
+        <div className={`inline-flex items-end cito-cat-row ${className}`} style={{ gap: `${gap}px` }}>
+          <img src="assets/cat-1.png" alt="" style={{ height, width: 'auto' }} className="cito-cat-img select-none" />
+          <img src="assets/cat-2.png" alt="" style={{ height, width: 'auto' }} className="cito-cat-img select-none" />
+          <img src="assets/cat-3.png" alt="" style={{ height, width: 'auto' }} className="cito-cat-img select-none" />
+          <img src="assets/cat-4.png" alt="" style={{ height, width: 'auto' }} className="cito-cat-img select-none" />
+        </div>
+      );
+    }
+
+    // Single cat — lets you pick which slice and how big
+    function CatSilhouette({ index = 3, height = 24, className = "", style = {} }) {
+      return (
+        <img src={`assets/cat-${index}.png`} alt="" style={{ height, width: 'auto', ...style }}
+          className={`cito-cat-img select-none pointer-events-none ${className}`} />
+      );
+    }
+
+    // Tiny "tail" SVG accent — used as a fluid divider/ornament
+    function TailFlourish({ className = "", width = 80, height = 24, color }) {
+      const c = color || 'var(--hair)';
+      return (
+        <svg className={className} width={width} height={height} viewBox="0 0 80 24" fill="none">
+          <path d="M2 12 C 14 12, 18 4, 30 4 S 50 20, 62 20 S 76 12, 78 12"
+            stroke={c} strokeWidth="1" strokeLinecap="round" fill="none" />
+        </svg>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // BASE COMPONENTS
+    // ═══════════════════════════════════════════════════════════════════════
+    function Pill({ tone = 'neutral', children, dot = true }) {
+      const tones = {
+        neutral: { bg: 'var(--paper-2)',    fg: 'var(--ink-2)',  dot: 'var(--muted)', border: 'transparent' },
+        honey:   { bg: 'var(--ink)',        fg: 'var(--on-ink)', dot: 'var(--on-ink)', border: 'transparent' },
+        sage:    { bg: 'var(--surface)',    fg: 'var(--ink)',    dot: 'var(--ink)',    border: 'var(--ink)' },
+        rust:    { bg: 'var(--surface)',    fg: 'var(--ink)',    dot: 'var(--ink)',    border: 'var(--hair)' },
+        ink:     { bg: 'var(--ink)',        fg: 'var(--on-ink)', dot: 'var(--on-ink)', border: 'transparent' },
+      };
+      const t = tones[tone];
+      return (
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-[3px] rounded-full text-[11px] font-medium tracking-tight"
+          style={{ background: t.bg, color: t.fg, border: `1px solid ${t.border}` }}>
+          {dot && <span className="w-1.5 h-1.5 rounded-full" style={{ background: t.dot }} />}
+          {children}
+        </span>
+      );
+    }
+
+    function BtnPrimary({ children, onClick, type = 'button', className = '', disabled }) {
+      return (
+        <button type={type} onClick={onClick} disabled={disabled}
+          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-medium lift disabled:opacity-40 disabled:pointer-events-none ${className}`}
+          style={{ background: 'var(--ink)', color: 'var(--on-ink)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--ink-2)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--ink)'; }}>
+          {children}
+        </button>
+      );
+    }
+
+    function BtnGhost({ children, onClick, className = '' }) {
+      return (
+        <button onClick={onClick}
+          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-medium lift ${className}`}
+          style={{ background: 'transparent', color: 'var(--ink)', border: '1px solid var(--hair)' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--hover-tint)'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
+          {children}
+        </button>
+      );
+    }
+
+    function BtnHoney({ children, onClick, className = '' }) {
+      return (
+        <button onClick={onClick}
+          className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-full text-[13px] font-medium lift ${className}`}
+          style={{ background: 'var(--honey)', color: 'var(--on-ink)' }}>
+          {children}
+        </button>
+      );
+    }
+
+    const inputCls = "w-full rounded-2xl px-4 py-3 text-[14px] outline-none focus-ink lift";
+    const inputStyle = { border: '1px solid var(--hair)', color: 'var(--ink)', background: 'var(--surface)' };
+
+    function Field({ label, required, children, error }) {
+      return (
+        <div className="mb-4">
+          <label className="block text-[11px] font-medium uppercase tracking-[0.12em] mb-1.5"
+            style={{ color: 'var(--muted)' }}>
+            {label} {required && <span style={{ color: 'var(--rust)' }}>*</span>}
+          </label>
+          {children}
+          {error && <p className="text-[12px] mt-1.5" style={{ color: 'var(--rust)' }}>{error}</p>}
+        </div>
+      );
+    }
+
+    function Card({ children, className = '', interactive = false, style = {} }) {
+      return (
+        <div className={`rounded-3xl card-shadow ${interactive ? 'card-shadow-hover cursor-pointer lift' : ''} ${className}`}
+          style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)', ...style }}>
+          {children}
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SIDEBAR (shared)
+    // ═══════════════════════════════════════════════════════════════════════
+    function Sidebar({ active, onNav, open, onClose }) {
+      const sections = [
+        {
+          label: 'Painel', items: [
+            { id: 'dashboard', label: 'Visão geral',     icon: Icon.grid },
+            { id: 'agenda',    label: 'Agenda',          icon: Icon.calendar },
+            { id: 'triagem',   label: 'Nova triagem',    icon: Icon.cat, accent: true },
+          ]
+        },
+        {
+          label: 'Pessoas', items: [
+            { id: 'pacientes',     label: 'Pacientes',       icon: Icon.users },
+            { id: 'atendimentos',  label: 'Atendimentos',    icon: Icon.heart },
+          ]
+        },
+        {
+          label: 'Sistema', items: [
+            { id: 'config',     label: 'Configurações',  icon: Icon.settings },
+            { id: 'relatorios', label: 'Relatórios',     icon: Icon.file },
+          ]
+        },
+      ];
+
+      return (
+        <>
+          {open && <div className="fixed inset-0 bg-black/30 z-30 lg:hidden anim-fade-in" onClick={onClose} />}
+          <aside className={`fixed top-0 left-0 bottom-0 w-[252px] z-40 transition-transform duration-300
+            ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 flex flex-col`}
+            style={{ background: 'var(--surface-2)', borderRight: '1px solid var(--hair-soft)' }}>
+
+            {/* Logo block */}
+            <div className="px-6 pt-6 pb-5 flex justify-center">
+              <CitoLogo size={60} />
+            </div>
+
+            <nav className="flex-1 px-3 overflow-y-auto pb-4">
+              {sections.map((s) => (
+                <div key={s.label} className="mb-5">
+                  <p className="text-[10px] font-medium uppercase tracking-[0.16em] px-3 mb-2"
+                    style={{ color: 'var(--subtle)' }}>{s.label}</p>
+                  {s.items.map((it) => {
+                    const isActive = active === it.id;
+                    return (
+                      <button key={it.id} onClick={() => onNav(it.id)}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-2xl text-[13.5px] font-normal mb-0.5 lift relative"
+                        style={{
+                          background: isActive ? 'var(--ink)' : 'transparent',
+                          color: isActive ? 'var(--on-ink)' : 'var(--ink-2)',
+                        }}
+                        onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--hover-tint)'; }}
+                        onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent'; }}>
+                        <span style={{ color: isActive ? 'var(--on-ink-55)' : (it.accent ? 'var(--ink)' : 'var(--muted)') }}>
+                          {it.icon}
+                        </span>
+                        {it.label}
+                        {it.accent && !isActive && (
+                          <span className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: 'var(--ink)' }} />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </nav>
+
+            {/* user card */}
+            <div className="px-4 pb-5">
+              <div className="rounded-2xl p-3.5" style={{ background: 'var(--surface)', border: '1px solid var(--hair)' }}>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-semibold"
+                    style={{ background: 'var(--ink)', color: 'var(--on-ink)' }}>
+                    AM
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium truncate" style={{ color: 'var(--ink)' }}>Dr. Antônia Mello</div>
+                    <div className="text-[11px]" style={{ color: 'var(--muted)' }}>Clínica Geral · CRM 28941</div>
+                  </div>
+                </div>
+                <button className="w-full mt-3 flex items-center justify-center gap-1.5 py-2 rounded-xl text-[12px] lift"
+                  style={{ color: 'var(--muted)', border: '1px solid var(--hair-soft)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--rust)'; e.currentTarget.style.borderColor = 'var(--rust-soft)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted)'; e.currentTarget.style.borderColor = 'var(--hair-soft)'; }}>
+                  {Icon.logout} Encerrar sessão
+                </button>
+              </div>
+            </div>
+          </aside>
+        </>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // TOPBAR
+    // ═══════════════════════════════════════════════════════════════════════
+    function Topbar({ title, subtitle, onMenu, children }) {
+      return (
+        <header className="sticky top-0 z-20 h-[68px] px-6 lg:px-10 flex items-center justify-between"
+          style={{ background: 'var(--topbar-bg)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--hair-soft)' }}>
+          <div className="flex items-center gap-4">
+            <button onClick={onMenu} className="lg:hidden flex flex-col gap-1 p-1.5">
+              <span className="w-5 h-px block" style={{ background: 'var(--ink)' }} />
+              <span className="w-5 h-px block" style={{ background: 'var(--ink)' }} />
+              <span className="w-5 h-px block" style={{ background: 'var(--ink)' }} />
+            </button>
+            <div>
+              <h1 className="font-display text-[26px] leading-none">{title}</h1>
+              <div className="text-[12px] mt-1" style={{ color: 'var(--muted)' }}>{subtitle}</div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {children}
+            <button className="w-10 h-10 rounded-full flex items-center justify-center lift relative"
+              style={{ background: 'var(--surface)', border: '1px solid var(--hair)', color: 'var(--ink)' }}>
+              {Icon.bell}
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full" style={{ background: 'var(--ink)', boxShadow: '0 0 0 2px var(--surface)' }} />
+            </button>
+            <div className="hidden md:flex items-center gap-2.5 pl-3 ml-1" style={{ borderLeft: '1px solid var(--hair)' }}>
+              <div className="text-right">
+                <div className="text-[12px] font-medium leading-tight" style={{ color: 'var(--ink)' }}>Hoje · Qua, 14 mai</div>
+                <div className="text-[10.5px] font-mono" style={{ color: 'var(--muted)' }}>2026 · semana 20</div>
+              </div>
+            </div>
+          </div>
+        </header>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CALENDAR WIDGET
+    // ═══════════════════════════════════════════════════════════════════════
+    const MONTHS = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    const DAYS_SHORT = ["D","S","T","Q","Q","S","S"];
+
+    function CalendarWidget({ marks = {} }) {
+      const today = new Date();
+      const [year, setYear] = useState(today.getFullYear());
+      const [month, setMonth] = useState(today.getMonth());
+      const [selected, setSelected] = useState(today.getDate());
+
+      function changeMonth(dir) {
+        let m = month + dir, y = year;
+        if (m > 11) { m = 0; y++; }
+        if (m < 0) { m = 11; y--; }
+        setMonth(m); setYear(y);
+      }
+      const firstDay = new Date(year, month, 1).getDay();
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const prevDays = new Date(year, month, 0).getDate();
+      const cells = [];
+      for (let i = firstDay - 1; i >= 0; i--) cells.push({ day: prevDays - i, current: false });
+      for (let d = 1; d <= daysInMonth; d++) cells.push({ day: d, current: true });
+      const rem = 42 - cells.length;
+      for (let d = 1; d <= rem; d++) cells.push({ day: d, current: false });
+
+      return (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <div className="font-display text-[20px] leading-none">{MONTHS[month]}</div>
+              <div className="text-[11px] font-mono mt-1" style={{ color: 'var(--muted)' }}>{year}</div>
+            </div>
+            <div className="flex gap-1">
+              <button onClick={() => changeMonth(-1)} className="w-8 h-8 rounded-full flex items-center justify-center lift"
+                style={{ border: '1px solid var(--hair)', color: 'var(--ink)' }}>{Icon.chevronLeft}</button>
+              <button onClick={() => changeMonth(1)} className="w-8 h-8 rounded-full flex items-center justify-center lift"
+                style={{ border: '1px solid var(--hair)', color: 'var(--ink)' }}>{Icon.chevronRight}</button>
+            </div>
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {DAYS_SHORT.map((d, i) => (
+              <div key={i} className="text-center text-[10px] font-medium uppercase tracking-wider py-1.5"
+                style={{ color: 'var(--subtle)' }}>{d}</div>
+            ))}
+            {cells.map((c, i) => {
+              const isToday = c.current && c.day === today.getDate() && month === today.getMonth() && year === today.getFullYear();
+              const isSel = c.current && c.day === selected;
+              const hasMark = c.current && marks[c.day];
+              return (
+                <button key={i} onClick={() => c.current && setSelected(c.day)}
+                  className="aspect-square flex items-center justify-center text-[13px] rounded-xl lift relative"
+                  style={{
+                    color: !c.current ? 'var(--subtle)' : isToday ? 'var(--on-ink)' : isSel ? 'var(--on-ink)' : 'var(--ink)',
+                    background: isToday ? 'var(--ink)' : isSel ? 'var(--muted)' : 'transparent',
+                    opacity: !c.current ? 0.3 : 1,
+                    fontWeight: isToday || isSel ? 600 : 400,
+                    cursor: c.current ? 'pointer' : 'default',
+                  }}>
+                  {c.day}
+                  {hasMark && !isToday && !isSel && (
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full"
+                      style={{ background: 'var(--ink)' }} />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // DASHBOARD
+    // ═══════════════════════════════════════════════════════════════════════
+    function DashboardPage({ onNav }) {
+      const stats = [
+        { label: 'Triagens hoje',     value: '14', delta: '+3 vs ontem',  tone: 'ink',   sub: 'Sessões clínicas' },
+        { label: 'Encaminhamentos',   value: '4',  delta: 'limiar ≥ 0.56', tone: 'honey', sub: 'Para teste genético' },
+        { label: 'Baixo risco',       value: '10', delta: 'acompanhar',    tone: 'sage',  sub: 'Após escore SXF' },
+        { label: 'Pacientes ativos',  value: '362', delta: '+18 este mês', tone: 'neutral', sub: 'Em prontuário' },
+      ];
+
+      const appointments = [
+        { time: '08:30', name: 'Lívia Andrade',     type: 'Triagem SXF',       status: 'sage',    statusLabel: 'Confirmado',   age: '7a 4m' },
+        { time: '09:15', name: 'Joaquim Pessoa',    type: 'Retorno',           status: 'neutral', statusLabel: 'Aguardando',   age: '11a 2m' },
+        { time: '10:00', name: 'Beatriz Coelho',    type: 'Primeira consulta', status: 'honey',   statusLabel: 'Em atendimento', age: '5a 9m' },
+        { time: '10:45', name: 'Davi Reinaldo',     type: 'Triagem SXF',       status: 'sage',    statusLabel: 'Confirmado',   age: '8a 1m' },
+        { time: '11:30', name: 'Sofia Vidigal',     type: 'Encaminhamento',    status: 'rust',    statusLabel: 'Pendente',     age: '6a 8m' },
+        { time: '14:00', name: 'Théo Ramires',      type: 'Retorno',           status: 'sage',    statusLabel: 'Confirmado',   age: '9a 11m' },
+      ];
+
+      // Sparkline data for weekly chart
+      const weekData = [
+        { d: 'Seg', triagens: 8, encaminhamentos: 2 },
+        { d: 'Ter', triagens: 11, encaminhamentos: 3 },
+        { d: 'Qua', triagens: 14, encaminhamentos: 4 },
+        { d: 'Qui', triagens: 9, encaminhamentos: 2 },
+        { d: 'Sex', triagens: 12, encaminhamentos: 3 },
+        { d: 'Sáb', triagens: 5, encaminhamentos: 1 },
+      ];
+      const maxV = Math.max(...weekData.map((w) => w.triagens));
+
+      const recentTriagens = [
+        { paciente: 'Lívia Andrade', sexo: 'F', score: 0.61, resultado: 'encaminhar', data: '14/05', hora: '08:30' },
+        { paciente: 'Davi Reinaldo', sexo: 'M', score: 0.42, resultado: 'baixo', data: '13/05', hora: '16:20' },
+        { paciente: 'Beatriz Coelho', sexo: 'F', score: 0.58, resultado: 'encaminhar', data: '13/05', hora: '14:10' },
+        { paciente: 'Théo Ramires', sexo: 'M', score: 0.31, resultado: 'baixo', data: '12/05', hora: '11:00' },
+      ];
+
+      return (
+        <div className="anim-fade-in space-y-6">
+
+          {/* Hero / welcome strip */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1.6fr_1fr] gap-5">
+            <Card className="p-7 relative overflow-hidden" style={{ background: 'var(--ink)' }}>
+              <div className="absolute -bottom-8 -right-6 pointer-events-none" style={{ opacity: 0.14, width: 380 }}>
+                <img src="assets/cito-tight.png" alt="" className="cito-logo-img on-ink w-full select-none" />
+              </div>
+              <div className="relative">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[10.5px] font-mono uppercase tracking-[0.2em]" style={{ color: 'var(--on-ink-55)' }}>
+                    CITO · ferramenta de pré-diagnóstico
+                  </span>
+                  <span className="w-1 h-1 rounded-full" style={{ background: 'var(--on-ink-35)' }} />
+                  <span className="text-[10.5px] font-mono" style={{ color: 'var(--on-ink-55)' }}>SUS · CAAE 47291</span>
+                </div>
+                <h2 className="font-display text-[40px] leading-[1.05] max-w-md" style={{ color: 'var(--on-ink)' }}>
+                  Painel clínico — CITO
+                </h2>
+                <p className="text-[13.5px] mt-3 max-w-md" style={{ color: 'var(--on-ink-55)' }}>
+                  Modelo estatístico validado para pré-diagnóstico da Síndrome do X Frágil. Limiares ativos: ♂ 0.56 · ♀ 0.55. Inicie uma nova avaliação ou continue uma triagem em curso.
+                </p>
+                <div className="flex flex-wrap gap-2 mt-5">
+                  <button onClick={() => onNav('triagem')}
+                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-[13px] font-medium lift"
+                    style={{ background: 'var(--on-ink)', color: 'var(--ink)' }}>
+                    {Icon.cat} Nova triagem
+                  </button>
+                  <button onClick={() => onNav('agenda')}
+                    className="inline-flex items-center gap-2 px-5 py-3 rounded-full text-[13px] font-medium lift"
+                    style={{ background: 'var(--on-ink-08)', color: 'var(--on-ink)', border: '1px solid var(--on-ink-14)' }}>
+                    {Icon.calendar} Ver agenda
+                  </button>
+                </div>
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="text-[10.5px] font-medium uppercase tracking-[0.16em]" style={{ color: 'var(--muted)' }}>Próximo agora</div>
+                  <div className="font-display text-[22px] mt-1">08:30 — Lívia Andrade</div>
+                </div>
+                <Pill tone="honey">Em 12 min</Pill>
+              </div>
+              <div className="space-y-2.5 text-[13px]" style={{ color: 'var(--ink-2)' }}>
+                <div className="flex justify-between">
+                  <span style={{ color: 'var(--muted)' }}>Tipo</span>
+                  <span>Triagem SXF · 1ª avaliação</span>
+                </div>
+                <div className="flex justify-between">
+                  <span style={{ color: 'var(--muted)' }}>Sexo · Idade</span>
+                  <span>F · 7 anos, 4 meses</span>
+                </div>
+                <div className="flex justify-between">
+                  <span style={{ color: 'var(--muted)' }}>Acompanhante</span>
+                  <span>Mãe · Carla Andrade</span>
+                </div>
+                <div className="flex justify-between">
+                  <span style={{ color: 'var(--muted)' }}>Encaminhamento</span>
+                  <span>UBS Vila Mariana</span>
+                </div>
+              </div>
+              <div className="mt-5 pt-4 flex gap-2" style={{ borderTop: '1px solid var(--hair-soft)' }}>
+                <button onClick={() => onNav('triagem')}
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 rounded-full text-[12.5px] font-medium lift"
+                  style={{ background: 'var(--ink)', color: 'var(--on-ink)' }}>
+                  Iniciar triagem {Icon.chevronRight}
+                </button>
+                <button className="px-4 py-2.5 rounded-full text-[12.5px] font-medium lift"
+                  style={{ border: '1px solid var(--hair)', color: 'var(--ink-2)' }}>Reagendar</button>
+              </div>
+            </Card>
+          </div>
+
+          {/* Stat cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {stats.map((s, i) => (
+              <Card key={i} className="p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="text-[10.5px] font-medium uppercase tracking-[0.16em]" style={{ color: 'var(--muted)' }}>
+                    {s.label}
+                  </div>
+                  <Pill tone={s.tone} dot={false}>{s.delta}</Pill>
+                </div>
+                <div className="font-display text-[44px] leading-none num-tabular" style={{ color: 'var(--ink)' }}>
+                  {s.value}
+                </div>
+                <div className="text-[11.5px] mt-2" style={{ color: 'var(--muted)' }}>{s.sub}</div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Chart + Recent triagens */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-5">
+            <Card className="p-6">
+              <div className="flex items-end justify-between mb-6">
+                <div>
+                  <div className="text-[10.5px] font-medium uppercase tracking-[0.16em]" style={{ color: 'var(--muted)' }}>
+                    Atividade semanal
+                  </div>
+                  <h3 className="font-display text-[24px] mt-1 leading-none">
+                    63 triagens · 15 encaminhamentos
+                  </h3>
+                </div>
+                <div className="flex items-center gap-3 text-[11.5px]">
+                  <span className="flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
+                    <span className="w-3 h-2 rounded-sm" style={{ background: 'var(--ink)' }} /> Triagens
+                  </span>
+                  <span className="flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
+                    <span className="w-3 h-2 rounded-sm border" style={{ background: 'var(--surface)', borderColor: 'var(--ink)' }} /> Encaminham.
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-6 gap-3 h-[200px] items-end">
+                {weekData.map((w, i) => {
+                  const h1 = (w.triagens / maxV) * 100;
+                  const h2 = (w.encaminhamentos / maxV) * 100;
+                  return (
+                    <div key={w.d} className="flex flex-col items-center justify-end h-full gap-2">
+                      <div className="text-[10.5px] font-mono num-tabular" style={{ color: 'var(--muted)' }}>
+                        {w.triagens}
+                      </div>
+                      <div className="w-full flex gap-1 items-end h-[160px]">
+                        <div className="flex-1 rounded-t-lg lift" style={{ background: 'var(--ink)', height: `${h1}%` }} />
+                        <div className="flex-1 rounded-t-lg lift" style={{ background: 'var(--surface)', border: '1px solid var(--ink)', height: `${h2}%` }} />
+                      </div>
+                      <div className="text-[11px] font-medium" style={{ color: 'var(--ink-2)' }}>{w.d}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <div className="text-[10.5px] font-medium uppercase tracking-[0.16em]" style={{ color: 'var(--muted)' }}>
+                    Triagens recentes
+                  </div>
+                  <h3 className="font-display text-[22px] mt-1 leading-none">Últimas avaliações</h3>
+                </div>
+                <button className="text-[12px] font-medium lift" style={{ color: 'var(--honey)' }}>
+                  Ver todas →
+                </button>
+              </div>
+              <div className="space-y-3">
+                {recentTriagens.map((t, i) => (
+                  <div key={i} className="flex items-center justify-between py-2.5"
+                    style={{ borderBottom: i < recentTriagens.length - 1 ? '1px solid var(--hair-soft)' : 'none' }}>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold"
+                        style={{ background: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid var(--hair)' }}>
+                        {t.sexo}
+                      </div>
+                      <div>
+                        <div className="text-[13.5px] font-medium leading-tight">{t.paciente}</div>
+                        <div className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>
+                          {t.data} · {t.hora}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-mono num-tabular text-[14px] font-medium"
+                        style={{ color: t.resultado === 'encaminhar' ? 'var(--ink)' : 'var(--subtle)' }}>
+                        {t.score.toFixed(2)}
+                      </div>
+                      <div className="text-[10.5px]" style={{ color: 'var(--muted)' }}>
+                        {t.resultado === 'encaminhar' ? 'Encaminhar' : 'Baixo risco'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+
+          {/* Today's appointments table */}
+          <Card className="overflow-hidden">
+            <div className="px-6 py-5 flex items-center justify-between flex-wrap gap-3" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
+              <div>
+                <h3 className="font-display text-[22px] leading-none">Agenda de hoje</h3>
+                <div className="text-[12px] mt-1.5" style={{ color: 'var(--muted)' }}>6 consultas agendadas · 2 em janela de urgência</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <BtnGhost>{Icon.print} Imprimir</BtnGhost>
+                <BtnPrimary onClick={() => onNav('triagem')}>{Icon.plus} Nova triagem</BtnPrimary>
+              </div>
+            </div>
+            <table className="w-full">
+              <thead>
+                <tr style={{ background: 'var(--paper-2)' }}>
+                  {['Horário','Paciente','Idade','Tipo','Status','Ações'].map((h) => (
+                    <th key={h} className="px-6 py-3 text-left text-[10.5px] font-medium uppercase tracking-[0.14em]"
+                      style={{ color: 'var(--muted)', borderBottom: '1px solid var(--hair-soft)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {appointments.map((a, i) => (
+                  <tr key={i} className="lift" style={{ borderBottom: i < appointments.length - 1 ? '1px solid var(--hair-soft)' : 'none' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--paper-2)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
+                    <td className="px-6 py-4 font-mono num-tabular text-[13.5px]" style={{ color: 'var(--ink)' }}>{a.time}</td>
+                    <td className="px-6 py-4 text-[13.5px] font-medium">{a.name}</td>
+                    <td className="px-6 py-4 text-[13px] font-mono" style={{ color: 'var(--muted)' }}>{a.age}</td>
+                    <td className="px-6 py-4 text-[13px]" style={{ color: 'var(--ink-2)' }}>{a.type}</td>
+                    <td className="px-6 py-4"><Pill tone={a.status}>{a.statusLabel}</Pill></td>
+                    <td className="px-6 py-4">
+                      <button className="text-[12px] font-medium" style={{ color: 'var(--ink)' }}
+                        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--muted)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--ink)'; }}>
+                        Abrir prontuário →
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // AGENDA
+    // ═══════════════════════════════════════════════════════════════════════
+    function AgendaPage() {
+      const events = [
+        { time: '08:30', name: 'Lívia Andrade', type: 'Triagem SXF', status: 'sage' },
+        { time: '09:15', name: 'Joaquim Pessoa', type: 'Retorno', status: 'neutral' },
+        { time: '10:00', name: 'Beatriz Coelho', type: 'Primeira consulta', status: 'honey' },
+        { time: '10:45', name: 'Davi Reinaldo', type: 'Triagem SXF', status: 'sage' },
+        { time: '11:30', name: 'Sofia Vidigal', type: 'Encaminhamento', status: 'rust' },
+        { time: '14:00', name: 'Théo Ramires', type: 'Retorno', status: 'sage' },
+      ];
+
+      const today = new Date();
+      const marks = { 14: true, 15: true, 17: true, 20: true, 22: true, 27: true };
+
+      return (
+        <div className="anim-fade-in grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
+          <div className="space-y-5">
+            <Card className="p-6">
+              <CalendarWidget marks={marks} />
+              <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--hair-soft)' }}>
+                <BtnPrimary className="w-full justify-center">{Icon.plus} Novo agendamento</BtnPrimary>
+              </div>
+            </Card>
+
+            <Card className="p-5">
+              <div className="text-[10.5px] font-medium uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--muted)' }}>Legenda</div>
+              <div className="space-y-2 text-[12.5px]">
+                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--sage)' }}/>Confirmado</div>
+                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--honey)' }}/>Em atendimento</div>
+                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--rust)' }}/>Pendente</div>
+                <div className="flex items-center gap-2"><span className="w-2 h-2 rounded-full" style={{ background: 'var(--ink-2)' }}/>Aguardando</div>
+              </div>
+            </Card>
+          </div>
+
+          <Card className="overflow-hidden">
+            <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
+              <div>
+                <div className="text-[10.5px] font-medium uppercase tracking-[0.16em]" style={{ color: 'var(--muted)' }}>Quarta-feira</div>
+                <h3 className="font-display text-[26px] leading-none mt-1">14 de Maio, 2026</h3>
+              </div>
+              <BtnGhost>{Icon.print} Imprimir</BtnGhost>
+            </div>
+            <div className="p-6">
+              <div className="relative pl-6" style={{ borderLeft: '1px dashed var(--hair)' }}>
+                {events.map((e, i) => (
+                  <div key={i} className="relative pb-5 last:pb-0">
+                    <div className="absolute -left-[27px] top-1.5 w-2.5 h-2.5 rounded-full"
+                      style={{ background: 'var(--ink)', boxShadow: '0 0 0 4px var(--paper)' }} />
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="font-mono text-[11px] font-medium mb-1" style={{ color: 'var(--muted)' }}>{e.time}</div>
+                        <div className="font-display text-[20px] leading-tight">{e.name}</div>
+                        <div className="text-[12.5px] mt-1" style={{ color: 'var(--muted)' }}>{e.type}</div>
+                      </div>
+                      <Pill tone={e.status}>
+                        {e.status === 'sage' ? 'Confirmado' : e.status === 'honey' ? 'Em atendimento' : e.status === 'rust' ? 'Pendente' : 'Aguardando'}
+                      </Pill>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PACIENTES
+    // ═══════════════════════════════════════════════════════════════════════
+    function PacientesPage() {
+      const [q, setQ] = useState('');
+      const pacientes = [
+        { nome: 'Lívia Andrade',     nasc: '12/01/2019', cpf: '098.***.***-22', cel: '(11) 9 8847-2901', email: 'carla.a@exemplo.com', ult: '14/05/2026', risco: 'encaminhar', score: 0.61 },
+        { nome: 'Joaquim Pessoa',    nasc: '03/03/2015', cpf: '124.***.***-09', cel: '(11) 9 9112-0044', email: 'familia.pessoa@uol', ult: '02/05/2026', risco: 'baixo', score: 0.28 },
+        { nome: 'Beatriz Coelho',    nasc: '24/07/2020', cpf: '208.***.***-71', cel: '(21) 9 8222-1100', email: 'p.coelho@mail', ult: '13/05/2026', risco: 'encaminhar', score: 0.58 },
+        { nome: 'Davi Reinaldo',     nasc: '11/04/2018', cpf: '311.***.***-65', cel: '(11) 9 7700-3290', email: 'rei.davi@gmail', ult: '13/05/2026', risco: 'baixo', score: 0.42 },
+        { nome: 'Sofia Vidigal',     nasc: '18/09/2019', cpf: '423.***.***-31', cel: '(11) 9 9482-2210', email: 'vidigal.fam@mail', ult: '11/05/2026', risco: 'encaminhar', score: 0.67 },
+        { nome: 'Théo Ramires',      nasc: '02/06/2016', cpf: '512.***.***-90', cel: '(11) 9 9091-7700', email: 'ramires.t@gmail', ult: '12/05/2026', risco: 'baixo', score: 0.31 },
+        { nome: 'Marina Tobias',     nasc: '29/11/2017', cpf: '600.***.***-43', cel: '(11) 9 8131-6622', email: 'tobias.m@uol', ult: '09/05/2026', risco: 'baixo', score: 0.19 },
+      ];
+      const filtered = pacientes.filter((p) =>
+        !q || p.nome.toLowerCase().includes(q.toLowerCase()) || p.cpf.includes(q)
+      );
+
+      return (
+        <div className="anim-fade-in space-y-5">
+          <Card className="p-5">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 min-w-[260px]">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted)' }}>{Icon.search}</span>
+                <input value={q} onChange={(e) => setQ(e.target.value)}
+                  placeholder="Buscar por nome ou CPF…"
+                  className="w-full rounded-2xl pl-11 pr-4 py-3 text-[14px] outline-none focus-ink lift"
+                  style={inputStyle} />
+              </div>
+              <BtnGhost>{Icon.chevronDown} Filtros</BtnGhost>
+              <BtnGhost>{Icon.chevronDown} Exportar CSV</BtnGhost>
+              <BtnPrimary>{Icon.plus} Novo paciente</BtnPrimary>
+            </div>
+          </Card>
+
+          <Card className="overflow-hidden">
+            <table className="w-full">
+              <thead>
+                <tr style={{ background: 'var(--paper-2)' }}>
+                  {['#','Paciente','Nascimento','CPF','Celular','Último escore','Status','Ações'].map((h, i) => (
+                    <th key={i} className="px-5 py-3 text-left text-[10.5px] font-medium uppercase tracking-[0.14em]"
+                      style={{ color: 'var(--muted)', borderBottom: '1px solid var(--hair-soft)' }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((p, i) => (
+                  <tr key={i} className="lift" style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--hair-soft)' : 'none' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--paper-2)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
+                    <td className="px-5 py-4 font-mono text-[12px]" style={{ color: 'var(--subtle)' }}>{String(i + 1).padStart(3, '0')}</td>
+                    <td className="px-5 py-4 text-[13.5px] font-medium">{p.nome}</td>
+                    <td className="px-5 py-4 text-[12.5px] font-mono" style={{ color: 'var(--ink-2)' }}>{p.nasc}</td>
+                    <td className="px-5 py-4 text-[12.5px] font-mono" style={{ color: 'var(--muted)' }}>{p.cpf}</td>
+                    <td className="px-5 py-4 text-[12.5px] font-mono" style={{ color: 'var(--ink-2)' }}>{p.cel}</td>
+                    <td className="px-5 py-4">
+                      <span className="font-mono num-tabular text-[13px] font-medium"
+                        style={{ color: p.risco === 'encaminhar' ? 'var(--ink)' : 'var(--subtle)' }}>
+                        {p.score.toFixed(2)}
+                      </span>
+                      <span className="text-[11px] ml-2 font-mono" style={{ color: 'var(--muted)' }}>· {p.ult}</span>
+                    </td>
+                    <td className="px-5 py-4">
+                      <Pill tone={p.risco === 'encaminhar' ? 'honey' : 'sage'}>
+                        {p.risco === 'encaminhar' ? 'Encaminhar' : 'Baixo risco'}
+                      </Pill>
+                    </td>
+                    <td className="px-5 py-4">
+                      <button className="text-[12px] font-medium lift" style={{ color: 'var(--ink)' }}>Abrir →</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CONFIG (simple)
+    // ═══════════════════════════════════════════════════════════════════════
+    function ConfigPage() {
+      const cards = [
+        { title: 'Gerência de agenda',   desc: 'Remarque, cancele ou reagende consultas já cadastradas no sistema.', icon: Icon.calendar, tag: 'Clínico' },
+        { title: 'Relatórios e questionários', desc: 'Acesse os questionários respondidos pelos pacientes e gere relatórios.', icon: Icon.file, tag: 'Análise' },
+        { title: 'Modelos de impressos', desc: 'Gerencie modelos de receitas, laudos e atestados médicos.',           icon: Icon.print, tag: 'Documentos' },
+        { title: 'Agenda telefônica',    desc: 'Gerencie os contatos de telefone associados aos seus pacientes.',     icon: Icon.phone, tag: 'Contatos' },
+        { title: 'Parâmetros do escore', desc: 'Ajuste limiares de encaminhamento por sexo (♂ 0.56 · ♀ 0.55).',       icon: Icon.sparkle, tag: 'Avançado' },
+        { title: 'Equipe clínica',       desc: 'Cadastre médicos, técnicos e gerencie permissões de acesso.',          icon: Icon.users, tag: 'Acesso' },
+      ];
+      return (
+        <div className="anim-fade-in grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {cards.map((c, i) => (
+            <Card key={i} interactive className="p-6">
+              <div className="w-11 h-11 rounded-2xl flex items-center justify-center mb-4"
+                style={{ background: 'var(--ink)', color: 'var(--on-ink)' }}>{c.icon}</div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-[10px] font-mono uppercase tracking-[0.14em]" style={{ color: 'var(--honey)' }}>{c.tag}</span>
+              </div>
+              <h3 className="font-display text-[20px] leading-tight mb-1.5">{c.title}</h3>
+              <p className="text-[12.5px] leading-relaxed" style={{ color: 'var(--muted)' }}>{c.desc}</p>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // TRIAGEM
+    // ═══════════════════════════════════════════════════════════════════════
+    const SINTOMAS = [
+      { id: "deficiencia_intelectual",    label: "Deficiência intelectual",      pesoM: 0.32, pesoF: 0.20 },
+      { id: "face_alongada_orelhas",      label: "Face alongada / orelhas",      pesoM: 0.29, pesoF: 0.09 },
+      { id: "macroorquidismo",            label: "Macroorquidismo",              pesoM: 0.26, pesoF: null  },
+      { id: "hipermobilidade_articular",  label: "Hipermobilidade articular",    pesoM: 0.19, pesoF: 0.04 },
+      { id: "dificuldades_aprendizagem",  label: "Dificuldades de aprendizagem", pesoM: 0.18, pesoF: 0.28 },
+      { id: "deficit_atencao",            label: "Déficit de atenção",           pesoM: 0.17, pesoF: 0.12 },
+      { id: "movimentos_repetitivos",     label: "Movimentos repetitivos",       pesoM: 0.17, pesoF: 0.05 },
+      { id: "atraso_fala",                label: "Atraso na fala",               pesoM: 0.14, pesoF: 0.01 },
+      { id: "hiperatividade",             label: "Hiperatividade",               pesoM: 0.12, pesoF: 0.04 },
+      { id: "evita_contato_visual",       label: "Evita contato visual",         pesoM: 0.06, pesoF: 0.08 },
+      { id: "evita_contato_fisico",       label: "Evita contato físico",         pesoM: 0.04, pesoF: 0.07 },
+      { id: "agressividade",              label: "Agressividade",                pesoM: 0.01, pesoF: 0.02 },
+    ];
+    const LIMIAR_M = 0.56;
+    const LIMIAR_F = 0.55;
+    const STEPS = ["Paciente", "Acompanhante", "Questionário", "Revisão"];
+
+    function StepIndicator({ current }) {
+      return (
+        <div className="flex items-center justify-center gap-0 mb-10">
+          {STEPS.map((s, i) => {
+            const done = i < current;
+            const active = i === current;
+            return (
+              <div key={s} className="flex items-center">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-medium lift"
+                    style={{
+                      background: done ? 'var(--sage)' : active ? 'var(--ink)' : 'transparent',
+                      border: done ? '1px solid var(--sage)' : active ? '1px solid var(--ink)' : '1px solid var(--hair)',
+                      color: done || active ? 'var(--on-ink)' : 'var(--subtle)',
+                    }}>
+                    {done ? Icon.check : i + 1}
+                  </div>
+                  <span className="text-[10.5px] font-medium uppercase tracking-[0.12em]"
+                    style={{ color: active ? 'var(--ink)' : done ? 'var(--sage)' : 'var(--subtle)' }}>
+                    {s}
+                  </span>
+                </div>
+                {i < STEPS.length - 1 && (
+                  <div className="w-16 h-px mx-2 mb-7"
+                    style={{ background: done ? 'var(--sage)' : 'var(--hair)' }} />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
+    function TriagemPage({ onNav }) {
+      const [step, setStep] = useState(0);
+      const [errors, setErrors] = useState({});
+      const [paciente, setPaciente] = useState({ nome: "", dataNasc: "", sexo: "", responsavel: "" });
+      const [acomp, setAcomp] = useState({ nome: "", relacao: "", telefone: "", email: "" });
+      const [respostas, setRespostas] = useState(Object.fromEntries(SINTOMAS.map((s) => [s.id, null])));
+
+      const sintomasFiltrados = SINTOMAS.filter((s) => paciente.sexo === 'F' ? s.pesoF !== null : true);
+
+      const calcScore = () => {
+        const isM = paciente.sexo === 'M';
+        let score = 0;
+        sintomasFiltrados.forEach((s) => {
+          const r = respostas[s.id];
+          const p = isM ? s.pesoM : s.pesoF;
+          if (r === 1 && p) score += p;
+        });
+        return parseFloat(score.toFixed(4));
+      };
+      const limiar = () => paciente.sexo === 'M' ? LIMIAR_M : LIMIAR_F;
+
+      function validar(s) {
+        const e = {};
+        if (s === 0) {
+          if (!paciente.nome.trim()) e.nome = 'Nome é obrigatório.';
+          if (!paciente.dataNasc) e.dataNasc = 'Data é obrigatória.';
+          if (!paciente.sexo) e.sexo = 'Sexo é obrigatório.';
+          if (!paciente.responsavel.trim()) e.responsavel = 'Responsável é obrigatório.';
+        }
+        if (s === 1) {
+          if (!acomp.nome.trim()) e.nomeAcomp = 'Nome é obrigatório.';
+          if (!acomp.relacao.trim()) e.relacaoAcomp = 'Relação é obrigatória.';
+        }
+        if (s === 2) {
+          const np = sintomasFiltrados.filter((x) => respostas[x.id] === null);
+          if (np.length > 0) e.questionario = `${np.length} pergunta(s) não respondida(s).`;
+        }
+        setErrors(e);
+        return Object.keys(e).length === 0;
+      }
+      function avancar() { if (validar(step)) { setStep(step + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); } }
+      function voltar() { setErrors({}); setStep(step - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+      function setResposta(id, v) {
+        setRespostas((p) => ({ ...p, [id]: v }));
+        if (errors.questionario) setErrors({});
+      }
+
+      const respondidas = sintomasFiltrados.filter((s) => respostas[s.id] !== null).length;
+      const progresso = sintomasFiltrados.length ? Math.round((respondidas / sintomasFiltrados.length) * 100) : 0;
+
+      return (
+        <div className="anim-fade-in max-w-3xl mx-auto pb-12">
+
+          {/* Header / breadcrumb is in Topbar already */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
+              style={{ background: 'var(--hover-tint)', color: 'var(--ink)' }}>
+              <span style={{ color: 'var(--ink)' }}>{Icon.cat}</span>
+              <span className="text-[11px] font-medium uppercase tracking-[0.14em]">Pré-diagnóstico — Síndrome do X Frágil</span>
+            </div>
+            <h1 className="font-display text-[44px] leading-[1.05]">
+              Triagem — Síndrome do X Frágil
+            </h1>
+            <p className="text-[13.5px] mt-3 max-w-xl mx-auto" style={{ color: 'var(--muted)' }}>
+              Modelo estatístico validado — AUC 0,73 (♂) e 0,76 (♀). Quatro etapas para gerar o encaminhamento ou indicar acompanhamento.
+            </p>
+          </div>
+
+          <StepIndicator current={step} />
+
+          {step === 0 && (
+            <Card className="p-8">
+              <h2 className="font-display text-[26px] leading-none mb-1">Dados do paciente</h2>
+              <p className="text-[13px] mb-6" style={{ color: 'var(--muted)' }}>
+                Informe os dados básicos da pessoa que será avaliada.
+              </p>
+              <Field label="Nome completo" required error={errors.nome}>
+                <input className={inputCls} style={inputStyle} type="text" placeholder="Nome do paciente"
+                  value={paciente.nome} onChange={(e) => setPaciente({ ...paciente, nome: e.target.value })} />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Data de nascimento" required error={errors.dataNasc}>
+                  <input className={inputCls} style={inputStyle} type="date"
+                    value={paciente.dataNasc} onChange={(e) => setPaciente({ ...paciente, dataNasc: e.target.value })} />
+                </Field>
+                <Field label="Sexo biológico" required error={errors.sexo}>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[['M','Masculino'], ['F','Feminino']].map(([v, lab]) => (
+                      <button key={v} onClick={() => setPaciente({ ...paciente, sexo: v })}
+                        className="py-3 rounded-2xl text-[13px] font-medium lift"
+                        style={{
+                          background: paciente.sexo === v ? 'var(--ink)' : 'var(--surface)',
+                          color: paciente.sexo === v ? 'var(--on-ink)' : 'var(--ink-2)',
+                          border: paciente.sexo === v ? '1px solid var(--ink)' : '1px solid var(--hair)',
+                        }}>
+                        {lab}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+              </div>
+              <Field label="Nome do responsável" required error={errors.responsavel}>
+                <input className={inputCls} style={inputStyle} type="text" placeholder="Pai, mãe ou tutor legal"
+                  value={paciente.responsavel} onChange={(e) => setPaciente({ ...paciente, responsavel: e.target.value })} />
+              </Field>
+            </Card>
+          )}
+
+          {step === 1 && (
+            <Card className="p-8">
+              <h2 className="font-display text-[26px] leading-none mb-1">Dados do acompanhante</h2>
+              <p className="text-[13px] mb-6" style={{ color: 'var(--muted)' }}>
+                O acompanhante responderá o questionário de sintomas.
+                Cada avaliação deve ser feita com um acompanhante diferente.
+              </p>
+              <Field label="Nome completo" required error={errors.nomeAcomp}>
+                <input className={inputCls} style={inputStyle} type="text" placeholder="Nome do acompanhante"
+                  value={acomp.nome} onChange={(e) => setAcomp({ ...acomp, nome: e.target.value })} />
+              </Field>
+              <Field label="Relação com o paciente" required error={errors.relacaoAcomp}>
+                <select className={inputCls + ' appearance-none'} style={{ ...inputStyle, backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6862' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>\")", backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
+                  value={acomp.relacao} onChange={(e) => setAcomp({ ...acomp, relacao: e.target.value })}>
+                  <option value="">Selecione</option>
+                  <option>Mãe</option><option>Pai</option><option>Avó / Avô</option>
+                  <option>Tio / Tia</option><option>Irmão / Irmã</option>
+                  <option>Cuidador(a)</option><option>Outro</option>
+                </select>
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Telefone">
+                  <input className={inputCls} style={inputStyle} type="tel" placeholder="(00) 9 0000-0000"
+                    value={acomp.telefone} onChange={(e) => setAcomp({ ...acomp, telefone: e.target.value })} />
+                </Field>
+                <Field label="E-mail">
+                  <input className={inputCls} style={inputStyle} type="email" placeholder="email@exemplo.com"
+                    value={acomp.email} onChange={(e) => setAcomp({ ...acomp, email: e.target.value })} />
+                </Field>
+              </div>
+
+              <div className="mt-4 rounded-2xl px-5 py-4 flex items-start gap-3"
+                style={{ background: 'var(--paper-2)', border: '1px solid var(--hair-soft)' }}>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                  style={{ background: 'var(--ink)', color: 'var(--on-ink)' }}>{Icon.paw}</div>
+                <div className="text-[12.5px]" style={{ color: 'var(--ink-2)' }}>
+                  <span className="font-medium">Paciente em avaliação:</span> {paciente.nome || '—'}
+                  {paciente.sexo && <> · {paciente.sexo === 'M' ? 'Masculino' : 'Feminino'}</>}
+                  {paciente.dataNasc && <> · nasc. {new Date(paciente.dataNasc).toLocaleDateString('pt-BR')}</>}
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {step === 2 && (
+            <div>
+              <div className="mb-5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[12.5px] font-medium" style={{ color: 'var(--ink-2)' }}>
+                    {respondidas} de {sintomasFiltrados.length} respondidas
+                  </span>
+                  <span className="text-[12.5px] font-mono num-tabular" style={{ color: 'var(--muted)' }}>{progresso}%</span>
+                </div>
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--hair-soft)' }}>
+                  <div className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${progresso}%`, background: 'var(--ink)' }} />
+                </div>
+              </div>
+
+              {errors.questionario && (
+                <div className="rounded-2xl px-4 py-3 mb-4 text-[12.5px]"
+                  style={{ background: 'var(--rust-soft)', color: 'var(--rust)' }}>
+                  {errors.questionario}
+                </div>
+              )}
+
+              <Card className="overflow-hidden">
+                <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--hair-soft)', background: 'var(--paper-2)' }}>
+                  <p className="text-[12.5px]" style={{ color: 'var(--ink-2)' }}>
+                    Responda com base no comportamento habitual de{' '}
+                    <span className="font-medium" style={{ color: 'var(--ink)' }}>{paciente.nome || '—'}</span>.
+                    Acompanhante: <span className="font-medium" style={{ color: 'var(--ink)' }}>{acomp.nome || '—'}</span>.
+                  </p>
+                </div>
+
+                <div>
+                  {sintomasFiltrados.map((s, idx) => {
+                    const resp = respostas[s.id];
+                    const peso = paciente.sexo === 'M' ? s.pesoM : s.pesoF;
+                    return (
+                      <div key={s.id} className="flex items-center justify-between px-6 py-4 lift"
+                        style={{
+                          borderBottom: idx < sintomasFiltrados.length - 1 ? '1px solid var(--hair-soft)' : 'none',
+                          background: resp === 1 ? 'var(--hover-tint)' : 'transparent',
+                        }}>
+                        <div className="flex-1 pr-4">
+                          <div className="flex items-baseline gap-3">
+                            <span className="text-[11px] font-mono num-tabular w-6" style={{ color: 'var(--subtle)' }}>
+                              {String(idx + 1).padStart(2, '0')}
+                            </span>
+                            <div className="text-[14px]" style={{ color: 'var(--ink)' }}>{s.label}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button onClick={() => setResposta(s.id, 0)}
+                            className="px-4 py-2.5 rounded-full text-[12px] font-medium lift min-w-[64px]"
+                            style={{
+                              background: 'var(--surface)',
+                              color: resp === 0 ? 'var(--ink)' : 'var(--muted)',
+                              border: resp === 0 ? '1px solid var(--ink)' : '1px solid var(--hair)',
+                            }}>Não</button>
+                          <button onClick={() => setResposta(s.id, 1)}
+                            className="px-4 py-2.5 rounded-full text-[12px] font-medium lift min-w-[64px]"
+                            style={{
+                              background: resp === 1 ? 'var(--ink)' : 'var(--surface)',
+                              color: resp === 1 ? 'var(--on-ink)' : 'var(--ink-2)',
+                              border: resp === 1 ? '1px solid var(--ink)' : '1px solid var(--hair)',
+                            }}>Sim</button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            </div>
+          )}
+
+          {step === 3 && (
+            <div className="space-y-4">
+              <Card className="p-6">
+                <h3 className="text-[10.5px] font-medium uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--muted)' }}>Paciente</h3>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+                  <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Nome</span><p>{paciente.nome}</p></div>
+                  <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Sexo</span><p>{paciente.sexo === 'M' ? 'Masculino' : 'Feminino'}</p></div>
+                  <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Nascimento</span><p className="font-mono">{paciente.dataNasc && new Date(paciente.dataNasc).toLocaleDateString('pt-BR')}</p></div>
+                  <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Responsável</span><p>{paciente.responsavel}</p></div>
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <h3 className="text-[10.5px] font-medium uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--muted)' }}>Acompanhante</h3>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+                  <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Nome</span><p>{acomp.nome}</p></div>
+                  <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Relação</span><p>{acomp.relacao}</p></div>
+                  {acomp.telefone && <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Telefone</span><p className="font-mono">{acomp.telefone}</p></div>}
+                  {acomp.email && <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>E-mail</span><p>{acomp.email}</p></div>}
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <h3 className="text-[10.5px] font-medium uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--muted)' }}>Sintomas avaliados</h3>
+                <div>
+                  {sintomasFiltrados.map((s, i) => (
+                    <div key={s.id} className="flex items-center justify-between py-2.5"
+                      style={{ borderBottom: i < sintomasFiltrados.length - 1 ? '1px solid var(--hair-soft)' : 'none' }}>
+                      <span className="text-[13px]" style={{ color: 'var(--ink-2)' }}>{s.label}</span>
+                      <Pill tone={respostas[s.id] === 1 ? 'honey' : 'neutral'}>
+                        {respostas[s.id] === 1 ? 'Presente' : 'Ausente'}
+                      </Pill>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              <Card className="p-8 relative overflow-hidden" style={{ background: 'var(--ink)' }}>
+                <div className="absolute -bottom-6 -right-2 pointer-events-none" style={{ opacity: 0.18, width: 260 }}>
+                  <img src="assets/cito-tight.png" alt="" className="cito-logo-img on-ink w-full select-none" />
+                </div>
+                <div className="relative flex items-start justify-between gap-6 flex-wrap">
+                  <div>
+                    <div className="text-[10.5px] font-mono uppercase tracking-[0.16em] mb-2" style={{ color: 'var(--on-ink-55)' }}>Score calculado</div>
+                    <div className="font-display text-[64px] leading-none num-tabular" style={{ color: 'var(--on-ink)' }}>
+                      {calcScore().toFixed(2)}
+                    </div>
+                    <div className="text-[12px] mt-2" style={{ color: 'var(--on-ink-55)' }}>
+                      Limiar de encaminhamento ({paciente.sexo === 'M' ? '♂' : '♀'}): {limiar()}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10.5px] font-mono uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--on-ink-55)' }}>Resultado preliminar</div>
+                    {calcScore() >= limiar() ? (
+                      <div className="inline-block px-5 py-2.5 rounded-full text-[13.5px] font-medium"
+                        style={{ background: 'var(--on-ink)', color: 'var(--ink)' }}>
+                        Encaminhar para teste genético
+                      </div>
+                    ) : (
+                      <div className="inline-block px-5 py-2.5 rounded-full text-[13.5px] font-medium"
+                        style={{ background: 'transparent', color: 'var(--on-ink)', border: '1px solid var(--on-ink-35)' }}>
+                        Baixo risco — acompanhamento
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            </div>
+          )}
+
+          <div className="flex items-center justify-between mt-8">
+            <div>
+              {step > 0 && <BtnGhost onClick={voltar}>{Icon.chevronLeft} Voltar</BtnGhost>}
+              {step === 0 && <BtnGhost onClick={() => onNav('dashboard')}>{Icon.chevronLeft} Cancelar</BtnGhost>}
+            </div>
+            <div>
+              {step < 3 && <BtnPrimary onClick={avancar}>Continuar {Icon.chevronRight}</BtnPrimary>}
+              {step === 3 && (
+                <BtnPrimary onClick={() => { alert('Triagem salva. Resultado: ' + (calcScore() >= limiar() ? 'Encaminhar' : 'Baixo risco')); onNav('dashboard'); }}>
+                  {Icon.check} Gerar laudo e encaminhar
+                </BtnPrimary>
+              )}
+            </div>
+          </div>
+
+        </div>
+      );
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // APP SHELL
+    // ═══════════════════════════════════════════════════════════════════════
+    function App() {
+      const [page, setPage] = useState('dashboard');
+      const [sidebarOpen, setSidebarOpen] = useState(false);
+      const [theme, setTheme] = useState(() => {
+        try { return localStorage.getItem('cito-theme') || 'light'; }
+        catch (e) { return 'light'; }
+      });
+
+      useEffect(() => {
+        document.documentElement.setAttribute('data-theme', theme);
+        try { localStorage.setItem('cito-theme', theme); } catch (e) {}
+      }, [theme]);
+
+      const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
+
+      const pageMeta = {
+        dashboard:    { title: 'Visão geral',     subtitle: 'CITO · pré-diagnóstico SXF · 14 mai 2026' },
+        agenda:       { title: 'Agenda',          subtitle: 'Suas consultas e janelas livres' },
+        triagem:      { title: 'Nova triagem',    subtitle: 'Checklist da Síndrome do X Frágil' },
+        pacientes:    { title: 'Pacientes',       subtitle: 'Prontuários ativos e histórico clínico' },
+        atendimentos: { title: 'Atendimentos',    subtitle: 'Sessões e retornos do dia' },
+        config:       { title: 'Configurações',   subtitle: 'Preferências do módulo clínico' },
+        relatorios:   { title: 'Relatórios',      subtitle: 'Questionários respondidos e exportações' },
+      };
+      const meta = pageMeta[page] || pageMeta.dashboard;
+
+      function nav(id) { setPage(id); setSidebarOpen(false); window.scrollTo({ top: 0, behavior: 'instant' }); }
+
+      return (
+        <div className="min-h-screen paper-bg flex">
+          <Sidebar active={page} onNav={nav} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+          <div className="flex-1 flex flex-col lg:ml-[252px] min-w-0">
+            <Topbar title={meta.title} subtitle={meta.subtitle} onMenu={() => setSidebarOpen(true)}>
+              <ThemeToggle theme={theme} onToggle={toggleTheme} />
+            </Topbar>
+            <main className="flex-1 p-6 lg:p-10">
+              {page === 'dashboard'    && <DashboardPage onNav={nav} />}
+              {page === 'agenda'       && <AgendaPage />}
+              {page === 'triagem'      && <TriagemPage onNav={nav} />}
+              {page === 'pacientes'    && <PacientesPage />}
+              {page === 'atendimentos' && <PacientesPage />}
+              {page === 'config'       && <ConfigPage />}
+              {page === 'relatorios'   && <ConfigPage />}
+            </main>
+            <footer className="px-10 py-8 text-center" style={{ color: 'var(--subtle)' }}>
+              <div className="flex justify-center mb-4" style={{ opacity: 0.45 }}>
+                <img src="assets/cito-tight.png" alt="cito" className="cito-logo-img select-none" style={{ height: 32, width: 'auto' }} />
+              </div>
+              <div className="text-[11px] font-mono">CITO · ferramenta de pré-diagnóstico SXF · LGPD compliant · v2.1.4</div>
+            </footer>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
