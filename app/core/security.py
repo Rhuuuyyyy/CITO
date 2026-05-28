@@ -59,7 +59,7 @@ def _sign(message: str, secret: str) -> str:
     role: str,
     sessao_id: int,
     ttl_seconds: int = _ACCESS_TOKEN_TTL_SECONDS,
-) -> str:
+    ) -> str:
     """Issue a signed HS256 JWT access token."""
     now = time.time()
     header = _b64url_encode(

@@ -23,7 +23,7 @@ debug: bool = False
 
 api_prefix: str = "/api/v1"
 
-secret_key: str = Field(default="change-me-in-environment", min_lenght=8)
+secret_key: str = Field(default="change-me-in-environment", min_length=8)
 
 cors_origins: list[str] = Field(default_factory=list)
 
@@ -35,5 +35,5 @@ pgp_key: SecretStr = Field(default=SecretStr("change-me-pgp-key"))
 
 @lru_cache
 def get_settings() -> Settings:
-    """Return a cached 'Settings' instance. Use as FastAPI dependendy.""""
+    """Return a cached 'Settings' instance. Use as FastAPI dependendy."""
     return Settings()
