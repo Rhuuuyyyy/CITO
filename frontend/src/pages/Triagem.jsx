@@ -108,6 +108,73 @@ function TriagemPage({ onNav }) {
   const respondidas = sintomasFiltrados.filter((s) => respostas[s.id] !== null).length;
   const progresso = sintomasFiltrados.length ? Math.round((respondidas / sintomasFiltrados.length) * 100) : 0;
 
+  function gerarPDF() {
+  console.log(window.jspdf);
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  const score = calcScore();
+  const resultado =
+    score >= limiar()
+      ? 'Encaminhar para teste genético'
+      : 'Baixo risco — acompanhamento';
+
+  let y = 20;
+
+  const linha = (txt, gap = 7) => {
+    doc.text(txt, 15, y);
+    y += gap;
+
+    if (y > 275) {
+      doc.addPage();
+      y = 20;
+    }
+  };
+
+    doc.setFontSize(18);
+    linha('Laudo de Triagem — Síndrome do X Frágil', 12);
+
+    doc.setFontSize(12);
+
+    linha('DADOS DO PACIENTE');
+    linha(`Nome: ${paciente.nome}`);
+    linha(`Nascimento: ${formatarData(paciente.dataNasc)}`);
+    linha(`Sexo: ${paciente.sexo === 'M' ? 'Masculino' : 'Feminino'}`);
+    linha(`Responsável: ${paciente.responsavel}`, 12);
+
+    linha('DADOS DO ACOMPANHANTE');
+
+    linha(`Nome: ${acomp.nome}`);
+    linha(`Relação: ${acomp.relacao}`);
+
+    if (acomp.telefone)
+      linha(`Telefone: ${acomp.telefone}`);
+
+    if (acomp.email)
+      linha(`E-mail: ${acomp.email}`, 12);
+
+    linha('SINTOMAS AVALIADOS');
+
+    sintomasFiltrados.forEach((s) => {
+      linha(
+        `${s.label}: ${
+          respostas[s.id] === 1
+            ? 'Presente'
+            : 'Ausente'
+        }`
+      );
+    });
+
+    linha('', 6);
+    linha(`Score calculado: ${score.toFixed(2)}`);
+    linha(`Limiar utilizado: ${limiar()}`);
+    linha(`Resultado: ${resultado}`);
+
+    doc.save(
+      `triagem-${(paciente.nome || 'paciente').replaceAll(' ', '_')}.pdf`
+    );
+  }
+
   return (
     <div className="anim-fade-in max-w-3xl mx-auto pb-12">
 
@@ -361,7 +428,7 @@ function TriagemPage({ onNav }) {
         <div>
           {step < 3 && <BtnPrimary onClick={avancar}>Continuar {Icon.chevronRight}</BtnPrimary>}
           {step === 3 && (
-            <BtnPrimary onClick={() => { alert('Triagem salva. Resultado: ' + (calcScore() >= limiar() ? 'Encaminhar' : 'Baixo risco')); onNav('dashboard'); }}>
+            <BtnPrimary onClick={() => {gerarPDF();alert('Triagem salva. Resultado: ' + (calcScore() >= limiar() ? 'Encaminhar' : 'Baixo risco')); onNav('dashboard'); }}>
               {Icon.check} Gerar laudo e encaminhar
             </BtnPrimary>
           )}
