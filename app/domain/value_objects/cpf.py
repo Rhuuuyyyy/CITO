@@ -35,9 +35,9 @@ def _validate_cpf(v: object) -> CPF: # v: object significa que inicialmente, a f
     raise ValueError("CPF deve ser uma string ou instância de CPF") # Se o value não se encaixar em nenhuma das insistances, retorna um ValueError
 
 
-CPFAnnotated = Annotated[CPF, BeforeValidator(_validate_cpf)] # ESsa é a função que deve ser solicitada fora do arquivo. Ela faz o _validate_cpf rodar primeiro (BeforeValidator).
+CPFAnnotated = Annotated[CPF, BeforeValidator(_validate_cpf)] # Essa é a função que deve ser solicitada fora do arquivo. Ela faz o _validate_cpf rodar primeiro (BeforeValidator).
 
-
+# Funcoes fora do arquivo chamam por CPFAnnotated.
 
 
 
