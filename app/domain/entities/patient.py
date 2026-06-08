@@ -34,6 +34,7 @@ class Escolaridade(StrEnum):
     POS_GRADUACAO = "pos_graduacao"
     NAO_INFORMADO = "nao_informado"
 
+
 class Patient(BaseModel):
     """Person registered for FXS evaluation."""
 
@@ -55,3 +56,36 @@ class Patient(BaseModel):
         ge=1,
         description="FK para usuarios.id (SERIAL do banco)",
     )
+
+    # v3.0 demographic fields
+    etnia: Etnia
+    uf_nascimento: str = Field(min_length=2, max_length=2)
+    municipio_residencia: str = Field(min_length=2, max_length=120)
+    uf_residencia: str = Field(min_length=2, max_length=2)
+    prematuro: bool = False
+    idade_gestacional_semanas: int | None = None
+    peso_nascimento_gramas: float | None = None
+    escolaridade: Escolaridade | None = None
+    tem_diagnostico_autismo: bool = False
+    tem_diagnostico_tdah: bool = False
+    outras_comorbidades: str | None = None
+    medicamentos_uso: str | None = None
+    acompanhante_id: UUID | None = None
+    grau_parentesco: str | None = None
+    diagnostico_confirmado_fxs: bool | None = None
+
+    created_at: datetime = Field(
+        default_factory=lambda: datetime.now(UTC)
+    )
+
+    @property
+    def cpf_hash(self) -> str | None:
+        return self.cpf.sha256_hex if self.cpf is not None else None
+
+    def age_at(self, reference: date) -> int:
+        years = reference.year - self.birth_date.year
+        before_birthday = (reference.month, reference.day) < (
+            self.birth_date.month,
+            self.birth_date.day,
+        )
+        return years - 1 if before_birthday else years
