@@ -1,0 +1,1 @@
+"""Pydantic request/response schemas — the OpenAPI source of truth for the frontend."""
