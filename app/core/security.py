@@ -53,13 +53,14 @@ def _sign(message: str, secret: str) -> str:
     ).digest()
     return _b64url_encode(sig)
 
-    def issue_access_token(
+
+def issue_access_token(
     *,
     usuario_id: int,
     role: str,
     sessao_id: int,
     ttl_seconds: int = _ACCESS_TOKEN_TTL_SECONDS,
-    ) -> str:
+) -> str:
     """Issue a signed HS256 JWT access token."""
     now = time.time()
     header = _b64url_encode(
@@ -84,7 +85,8 @@ def _sign(message: str, secret: str) -> str:
     signature = _sign(message, _settings.secret_key)
     return f"{message}.{signature}"
 
-    def verify_access_token(token: str) -> TokenClaims:
+
+def verify_access_token(token: str) -> TokenClaims:
     """Verify a JWT and return its claims.
 
     Raises:
@@ -98,7 +100,6 @@ def _sign(message: str, secret: str) -> str:
     message = f"{header}.{payload_b64}"
     expected_sig = _sign(message, _settings.secret_key)
 
-    # Constant-time comparison to prevent timing attacks
     if not hmac.compare_digest(signature, expected_sig):
         raise JWTError("JWT signature verification failed")
 

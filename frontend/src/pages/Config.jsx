@@ -40,25 +40,57 @@ function ConfigCard({ icon, tag, title, desc, onClick }) {
 
 // ── Seção de relatórios / gráficos ───────────────────────────────────
 function RelatoriosSection({ onBack }) {
-  const weekData = [
-    { label: 'Seg', val: 8 }, { label: 'Ter', val: 11 },
-    { label: 'Qua', val: 14 }, { label: 'Qui', val: 9 },
-    { label: 'Sex', val: 12 }, { label: 'Sáb', val: 5 },
-  ];
-  const monthData = [
-    { label: 'Jan', val: 42 }, { label: 'Fev', val: 38 },
-    { label: 'Mar', val: 55 }, { label: 'Abr', val: 61 },
-    { label: 'Mai', val: 48 }, { label: 'Jun', val: 70 },
-  ];
-  const encData = [
-    { label: 'Seg', val: 2 }, { label: 'Ter', val: 3 },
-    { label: 'Qua', val: 4 }, { label: 'Qui', val: 2 },
-    { label: 'Sex', val: 3 }, { label: 'Sáb', val: 1 },
-  ];
+  const [norm, setNorm] = useState([]);
 
-  const maxWeek  = Math.max(...weekData.map(d => d.val));
-  const maxMonth = Math.max(...monthData.map(d => d.val));
-  const maxEnc   = Math.max(...encData.map(d => d.val));
+  useEffect(() => {
+    db.from('tb_avaliacoes')
+      .select('score_final, data_avaliacao, tb_pacientes(sexo, nome_criptografado)')
+      .eq('status', 'finalizada')
+      .order('data_avaliacao', { ascending: false })
+      .then(({ data }) => {
+        setNorm((data || []).map(a => {
+          const score = Number(a.score_final);
+          const sexo = a.tb_pacientes?.sexo;
+          return {
+            score, sexo,
+            nome: decodeNome(a.tb_pacientes?.nome_criptografado) || '—',
+            data: new Date(a.data_avaliacao),
+            encaminha: score >= (sexo === 'M' ? 0.56 : 0.55),
+          };
+        }));
+      });
+  }, []);
+
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+  const weekData = [];
+  const encData = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(hoje); d.setDate(hoje.getDate() - i);
+    weekData.push({ label: diasSemana[d.getDay()], val: norm.filter(a => sameDay(a.data, d)).length });
+    encData.push({ label: diasSemana[d.getDay()], val: norm.filter(a => a.encaminha && sameDay(a.data, d)).length });
+  }
+
+  const monthData = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+    monthData.push({ label: meses[d.getMonth()], val: norm.filter(a => a.data.getFullYear() === d.getFullYear() && a.data.getMonth() === d.getMonth()).length });
+  }
+
+  const maxWeek  = Math.max(...weekData.map(d => d.val), 1);
+  const maxMonth = Math.max(...monthData.map(d => d.val), 1);
+  const maxEnc   = Math.max(...encData.map(d => d.val), 1);
+
+  const totalEnc = norm.filter(a => a.encaminha).length;
+  const totalBaixo = norm.length - totalEnc;
+  const triagensSemana = weekData.reduce((s, d) => s + d.val, 0);
+  const totalSeisMeses = monthData.reduce((s, d) => s + d.val, 0);
+  const encSemana = encData.reduce((s, d) => s + d.val, 0);
+  const taxaEnc = norm.length ? Math.round(totalEnc / norm.length * 100) : 0;
+  const ultimas = norm.slice(0, 5);
 
   return (
     <div className="anim-fade-in space-y-5">
@@ -80,10 +112,10 @@ function RelatoriosSection({ onBack }) {
       {/* Resumo numérico */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
-          { label: 'Triagens (semana)', val: '59' },
-          { label: 'Encaminhamentos',  val: '15' },
-          { label: 'Baixo risco',      val: '44' },
-          { label: 'Taxa encaminh.',   val: '25%' },
+          { label: 'Triagens (semana)', val: String(triagensSemana) },
+          { label: 'Encaminhamentos',  val: String(totalEnc) },
+          { label: 'Baixo risco',      val: String(totalBaixo) },
+          { label: 'Taxa encaminh.',   val: `${taxaEnc}%` },
         ].map((s, i) => (
           <div key={i} className="rounded-2xl p-4"
             style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
@@ -102,7 +134,7 @@ function RelatoriosSection({ onBack }) {
           <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] mb-1"
             style={{ color: 'var(--muted)' }}>Triagens — semana</div>
           <div className="font-display text-[22px] leading-none mb-4"
-            style={{ color: 'var(--ink)' }}>59 sessões</div>
+            style={{ color: 'var(--ink)' }}>{triagensSemana} sessões</div>
           <MiniBarChart data={weekData} maxVal={maxWeek} />
         </div>
 
@@ -111,7 +143,7 @@ function RelatoriosSection({ onBack }) {
           <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] mb-1"
             style={{ color: 'var(--muted)' }}>Triagens — 6 meses</div>
           <div className="font-display text-[22px] leading-none mb-4"
-            style={{ color: 'var(--ink)' }}>314 total</div>
+            style={{ color: 'var(--ink)' }}>{totalSeisMeses} total</div>
           <MiniBarChart data={monthData} maxVal={maxMonth} />
         </div>
 
@@ -120,7 +152,7 @@ function RelatoriosSection({ onBack }) {
           <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] mb-1"
             style={{ color: 'var(--muted)' }}>Encaminham. — semana</div>
           <div className="font-display text-[22px] leading-none mb-4"
-            style={{ color: 'var(--ink)' }}>15 casos</div>
+            style={{ color: 'var(--ink)' }}>{encSemana} casos</div>
           <MiniBarChart data={encData} maxVal={maxEnc} color="var(--honey)" />
         </div>
       </div>
@@ -131,12 +163,12 @@ function RelatoriosSection({ onBack }) {
         <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
           <h3 className="font-display text-[18px] leading-none">Últimas triagens</h3>
         </div>
-        {[
-          { paciente: 'Lívia Andrade',  sexo: 'F', score: 0.61, resultado: 'encaminhar', data: '14/05', hora: '08:30' },
-          { paciente: 'Davi Reinaldo',  sexo: 'M', score: 0.42, resultado: 'baixo',      data: '13/05', hora: '16:20' },
-          { paciente: 'Beatriz Coelho', sexo: 'F', score: 0.58, resultado: 'encaminhar', data: '13/05', hora: '14:10' },
-          { paciente: 'Théo Ramires',   sexo: 'M', score: 0.31, resultado: 'baixo',      data: '12/05', hora: '11:00' },
-        ].map((t, i, arr) => (
+        {ultimas.length === 0 && (
+          <div className="px-6 py-6 text-[13px]" style={{ color: 'var(--muted)' }}>
+            Nenhuma triagem finalizada ainda.
+          </div>
+        )}
+        {ultimas.map((t, i, arr) => (
           <div key={i} className="flex items-center justify-between px-6 py-4"
             style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--hair-soft)' : 'none' }}>
             <div className="flex items-center gap-3">
@@ -145,19 +177,19 @@ function RelatoriosSection({ onBack }) {
                 {t.sexo}
               </div>
               <div>
-                <div className="text-[13.5px] font-medium">{t.paciente}</div>
+                <div className="text-[13.5px] font-medium">{t.nome}</div>
                 <div className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>
-                  {t.data} · {t.hora}
+                  {t.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} · {t.data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </div>
               </div>
             </div>
             <div className="text-right">
               <div className="font-mono num-tabular text-[14px] font-medium"
-                style={{ color: t.resultado === 'encaminhar' ? 'var(--ink)' : 'var(--subtle)' }}>
+                style={{ color: t.encaminha ? 'var(--ink)' : 'var(--subtle)' }}>
                 {t.score.toFixed(2)}
               </div>
               <div className="text-[10.5px]" style={{ color: 'var(--muted)' }}>
-                {t.resultado === 'encaminhar' ? 'Encaminhar' : 'Baixo risco'}
+                {t.encaminha ? 'Encaminhar' : 'Baixo risco'}
               </div>
             </div>
           </div>

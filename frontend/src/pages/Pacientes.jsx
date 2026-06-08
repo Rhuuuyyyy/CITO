@@ -8,12 +8,28 @@ const acompVazio = () => ({
   nome: '', relacao: '', telefone: '', email: '',
 });
 
+const ETNIAS = [
+  ['branca', 'Branca'], ['preta', 'Preta'], ['parda', 'Parda'],
+  ['amarela', 'Amarela'], ['indigena', 'Indígena'], ['nao_declarado', 'Não declarado'],
+];
+const ESCOLARIDADES = [
+  ['sem_escolaridade', 'Sem escolaridade'], ['educacao_infantil', 'Educação infantil'],
+  ['fundamental_incompleto', 'Fundamental incompleto'], ['fundamental_completo', 'Fundamental completo'],
+  ['medio_incompleto', 'Médio incompleto'], ['medio_completo', 'Médio completo'],
+  ['superior_incompleto', 'Superior incompleto'], ['superior_completo', 'Superior completo'],
+  ['nao_informado', 'Não informado'],
+];
+const selectArrow = "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6862' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>\")";
+
 // ── Modal de cadastro ────────────────────────────────────────────────
 function ModalCadastroPaciente({ onClose, onSalvar }) {
   const [aba, setAba]         = useState('paciente'); // 'paciente' | 'acompanhantes'
   const [errors, setErrors]   = useState({});
   const [paciente, setPac]    = useState({
-    nome: '', dataNasc: '', sexo: '', cpf: '', celular: '', email: '', responsavel: '',
+    nome: '', dataNasc: '', sexo: '', cpf: '', celular: '', email: '',
+    etnia: '', escolaridade: '', prematuro: false,
+    tem_diagnostico_autismo: false, tem_diagnostico_tdah: false,
+    outras_comorbidades: '', medicamentos_uso: '',
   });
   const [acomps, setAcomps]   = useState([acompVazio()]);
 
@@ -24,7 +40,6 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
     if (!paciente.dataNasc)          e.dataNasc   = 'Obrigatório.';
     if (!paciente.sexo)              e.sexo       = 'Obrigatório.';
     if (!paciente.cpf.trim())        e.cpf        = 'Obrigatório.';
-    if (!paciente.responsavel.trim()) e.responsavel = 'Obrigatório.';
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -187,12 +202,65 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
                   onChange={(e) => setPac({ ...paciente, email: e.target.value })} />
               </Field>
 
-              <Field label="Responsável legal" required error={errors.responsavel}>
-                <input className={`${inputCls} focus-ink`} style={inputStyle}
-                  type="text" placeholder="Nome do pai, mãe ou tutor"
-                  value={paciente.responsavel}
-                  onChange={(e) => { setPac({ ...paciente, responsavel: e.target.value }); if (errors.responsavel) setErrors((v) => ({ ...v, responsavel: '' })); }} />
-              </Field>
+              <div className="pt-4 mt-2" style={{ borderTop: '1px solid var(--hair-soft)' }}>
+                <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] mb-3" style={{ color: 'var(--muted)' }}>
+                  Dados clínicos (opcional)
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Etnia">
+                    <select className={`${inputCls} focus-ink appearance-none`}
+                      style={{ ...inputStyle, backgroundImage: selectArrow, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
+                      value={paciente.etnia}
+                      onChange={(e) => setPac({ ...paciente, etnia: e.target.value })}>
+                      <option value="">Selecione</option>
+                      {ETNIAS.map(([v, lab]) => <option key={v} value={v}>{lab}</option>)}
+                    </select>
+                  </Field>
+
+                  <Field label="Escolaridade">
+                    <select className={`${inputCls} focus-ink appearance-none`}
+                      style={{ ...inputStyle, backgroundImage: selectArrow, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' }}
+                      value={paciente.escolaridade}
+                      onChange={(e) => setPac({ ...paciente, escolaridade: e.target.value })}>
+                      <option value="">Selecione</option>
+                      {ESCOLARIDADES.map(([v, lab]) => <option key={v} value={v}>{lab}</option>)}
+                    </select>
+                  </Field>
+                </div>
+
+                <div className="flex flex-wrap gap-2 mt-2 mb-4">
+                  {[
+                    ['prematuro', 'Prematuro (<37 sem.)'],
+                    ['tem_diagnostico_autismo', 'Diagnóstico de autismo'],
+                    ['tem_diagnostico_tdah', 'Diagnóstico de TDAH'],
+                  ].map(([campo, lab]) => (
+                    <button key={campo} type="button"
+                      onClick={() => setPac((p) => ({ ...p, [campo]: !p[campo] }))}
+                      className="px-3 py-1.5 rounded-full text-[12px] font-medium lift"
+                      style={{
+                        background: paciente[campo] ? 'var(--ink)' : 'var(--surface)',
+                        color: paciente[campo] ? 'var(--on-ink)' : 'var(--ink-2)',
+                        border: paciente[campo] ? '1px solid var(--ink)' : '1px solid var(--hair)',
+                      }}>{lab}</button>
+                  ))}
+                </div>
+
+                <Field label="Outras comorbidades">
+                  <input className={`${inputCls} focus-ink`} style={inputStyle}
+                    type="text" placeholder="Ex.: epilepsia, cardiopatia…"
+                    value={paciente.outras_comorbidades}
+                    onChange={(e) => setPac({ ...paciente, outras_comorbidades: e.target.value })} />
+                </Field>
+
+                <Field label="Medicamentos em uso">
+                  <input className={`${inputCls} focus-ink`} style={inputStyle}
+                    type="text" placeholder="Ex.: metilfenidato, risperidona…"
+                    value={paciente.medicamentos_uso}
+                    onChange={(e) => setPac({ ...paciente, medicamentos_uso: e.target.value })} />
+                </Field>
+              </div>
+
             </div>
           )}
 
@@ -310,40 +378,220 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
   );
 }
 
+function ModalProntuario({ paciente, onClose }) {
+  const [avaliacoes, setAvaliacoes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    db.from('tb_avaliacoes')
+      .select('id, data_avaliacao, score_final, status, tb_encaminhamentos(tipo, gerado_automaticamente)')
+      .eq('paciente_id', paciente.id)
+      .order('data_avaliacao', { ascending: false })
+      .then(({ data, error }) => {
+        if (error) console.error('Erro ao carregar prontuário:', error);
+        setAvaliacoes(data || []);
+        setLoading(false);
+      });
+  }, [paciente.id]);
+
+  const limiar = paciente.sexo === 'M' ? 0.56 : 0.55;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 anim-fade-in"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+
+      <div className="w-full max-w-xl max-h-[92vh] flex flex-col rounded-3xl card-shadow anim-fade-up"
+        style={{ background: 'var(--surface)', border: '1px solid var(--hair)' }}>
+
+        <div className="flex items-center justify-between px-7 pt-7 pb-5"
+          style={{ borderBottom: '1px solid var(--hair-soft)' }}>
+          <div>
+            <h2 className="font-display text-[26px] leading-none">{paciente.nome}</h2>
+            <p className="text-[12.5px] mt-1" style={{ color: 'var(--muted)' }}>
+              Histórico de triagens · {paciente.sexo === 'M' ? 'Masculino' : 'Feminino'}
+            </p>
+          </div>
+          <button onClick={onClose}
+            className="w-9 h-9 rounded-full flex items-center justify-center lift"
+            style={{ border: '1px solid var(--hair)', color: 'var(--muted)' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--ink)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted)'; }}>
+            {Icon.x}
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-7 py-6">
+          {loading && (
+            <p className="text-[13px]" style={{ color: 'var(--muted)' }}>Carregando…</p>
+          )}
+          {!loading && avaliacoes.length === 0 && (
+            <p className="text-[13px]" style={{ color: 'var(--muted)' }}>
+              Nenhuma triagem registrada para este paciente.
+            </p>
+          )}
+
+          <div className="space-y-3">
+            {avaliacoes.map((a) => {
+              const score = a.score_final != null ? Number(a.score_final) : null;
+              const encaminha = score != null && score >= limiar;
+              const encs = a.tb_encaminhamentos || [];
+              return (
+                <div key={a.id} className="rounded-2xl p-5"
+                  style={{ border: '1px solid var(--hair)', background: 'var(--paper-2)' }}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[12.5px] font-mono" style={{ color: 'var(--muted)' }}>
+                      {new Date(a.data_avaliacao).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <Pill tone={a.status === 'finalizada' ? (encaminha ? 'honey' : 'sage') : 'neutral'}>
+                      {a.status === 'finalizada' ? (encaminha ? 'Encaminhar' : 'Baixo risco') : a.status}
+                    </Pill>
+                  </div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-display text-[28px] num-tabular leading-none">
+                      {score != null ? score.toFixed(2) : '—'}
+                    </span>
+                    <span className="text-[11.5px]" style={{ color: 'var(--muted)' }}>
+                      limiar {paciente.sexo === 'M' ? '♂' : '♀'} {limiar}
+                    </span>
+                  </div>
+                  {encs.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {encs.map((e, i) => (
+                        <Pill key={i} tone="honey">{e.tipo}{e.gerado_automaticamente ? ' · auto' : ''}</Pill>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end px-7 py-5"
+          style={{ borderTop: '1px solid var(--hair-soft)' }}>
+          <BtnGhost onClick={onClose}>Fechar</BtnGhost>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // PÁGINA PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════
-function PacientesPage() {
+function PacientesPage({ usuario }) {
   const [q, setQ]             = useState('');
   const [modal, setModal]     = useState(false);
-  const [pacientes, setPacientes] = useState([
-    { nome: 'Lívia Andrade',   nasc: '12/01/2019', cpf: '098.***.***-22', cel: '(11) 9 8847-2901', ult: '14/05/2026', risco: 'encaminhar', score: 0.61, acomps: 2 },
-    { nome: 'Joaquim Pessoa',  nasc: '03/03/2015', cpf: '124.***.***-09', cel: '(11) 9 9112-0044', ult: '02/05/2026', risco: 'baixo',      score: 0.28, acomps: 1 },
-    { nome: 'Beatriz Coelho',  nasc: '24/07/2020', cpf: '208.***.***-71', cel: '(21) 9 8222-1100', ult: '13/05/2026', risco: 'encaminhar', score: 0.58, acomps: 1 },
-    { nome: 'Davi Reinaldo',   nasc: '11/04/2018', cpf: '311.***.***-65', cel: '(11) 9 7700-3290', ult: '13/05/2026', risco: 'baixo',      score: 0.42, acomps: 3 },
-    { nome: 'Sofia Vidigal',   nasc: '18/09/2019', cpf: '423.***.***-31', cel: '(11) 9 9482-2210', ult: '11/05/2026', risco: 'encaminhar', score: 0.67, acomps: 1 },
-    { nome: 'Théo Ramires',    nasc: '02/06/2016', cpf: '512.***.***-90', cel: '(11) 9 9091-7700', ult: '12/05/2026', risco: 'baixo',      score: 0.31, acomps: 2 },
-    { nome: 'Marina Tobias',   nasc: '29/11/2017', cpf: '600.***.***-43', cel: '(11) 9 8131-6622', ult: '09/05/2026', risco: 'baixo',      score: 0.19, acomps: 1 },
-  ]);
+  const [pacientes, setPacientes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [cpfQueryHash, setCpfQueryHash] = useState(null);
+  const [prontuario, setProntuario] = useState(null);
 
-  function handleSalvar({ paciente, acompanhantes }) {
-    const [y, m, d] = paciente.dataNasc.split('-');
-    const novo = {
-      nome:   paciente.nome,
-      nasc:   `${d}/${m}/${y}`,
-      cpf:    paciente.cpf,
-      cel:    paciente.celular || '—',
-      ult:    '—',
-      risco:  'baixo',
-      score:  0,
-      acomps: acompanhantes.length,
-    };
-    setPacientes([...pacientes, novo]);
+  async function carregarPacientes() {
+    setLoading(true);
+    const { data, error } = await db
+      .from('tb_pacientes')
+      .select('id, nome_criptografado, data_nascimento, sexo, cpf_hash, acompanhante_id, tb_acompanhantes(telefone), tb_avaliacoes(score_final, status, data_avaliacao)')
+      .eq('ativo', true)
+      .order('id', { ascending: false });
+
+    if (error) {
+      console.error('Erro ao carregar pacientes:', error);
+    } else if (data) {
+      setPacientes(data.map(p => {
+        const [y, m, d] = (p.data_nascimento || '').split('-');
+
+        const finalizadas = (p.tb_avaliacoes || [])
+          .filter(a => a.status === 'finalizada' && a.score_final != null)
+          .sort((a, b) => new Date(b.data_avaliacao) - new Date(a.data_avaliacao));
+        const ultima = finalizadas[0];
+        const score = ultima ? Number(ultima.score_final) : 0;
+        const limiar = p.sexo === 'M' ? 0.56 : 0.55;
+
+        return {
+          id:      p.id,
+          nome:    decodeNome(p.nome_criptografado) || '—',
+          sexo:    p.sexo,
+          nasc:    d ? `${d}/${m}/${y}` : '—',
+          cpf:     p.cpf_hash ? '***.***.***-**' : '—',
+          cpfHash: p.cpf_hash || null,
+          cel:     p.tb_acompanhantes?.telefone || '—',
+          ult:     ultima ? new Date(ultima.data_avaliacao).toLocaleDateString('pt-BR') : '—',
+          risco:   score >= limiar ? 'encaminhar' : 'baixo',
+          score:   score,
+          acomps:  p.acompanhante_id ? 1 : 0,
+        };
+      }));
+    }
+    setLoading(false);
   }
 
-  const filtered = pacientes.filter((p) =>
-    !q || p.nome.toLowerCase().includes(q.toLowerCase()) || p.cpf.includes(q)
-  );
+  useEffect(() => { carregarPacientes(); }, []);
+
+  useEffect(() => {
+    const digits = q.replace(/\D/g, '');
+    if (digits.length === 11) {
+      hashCpf(q).then(setCpfQueryHash);
+    } else {
+      setCpfQueryHash(null);
+    }
+  }, [q]);
+
+  async function handleSalvar({ paciente: p, acompanhantes }) {
+    const a = acompanhantes[0];
+
+    const { data: acompData, error: ae } = await db
+      .from('tb_acompanhantes')
+      .insert({
+        nome_criptografado: encodeNome(a.nome),
+        telefone: a.telefone || null,
+        email: a.email || null,
+      })
+      .select('id')
+      .single();
+
+    if (ae) { console.error('Erro ao salvar acompanhante:', ae); return; }
+
+    const cpfHash = await hashCpf(p.cpf);
+    const { data: pacRow, error: pe } = await db
+      .from('tb_pacientes')
+      .insert({
+        nome_criptografado: encodeNome(p.nome),
+        data_nascimento: p.dataNasc,
+        sexo: p.sexo,
+        cpf_hash: cpfHash,
+        etnia: p.etnia || null,
+        escolaridade: p.escolaridade || null,
+        prematuro: p.prematuro,
+        tem_diagnostico_autismo: p.tem_diagnostico_autismo,
+        tem_diagnostico_tdah: p.tem_diagnostico_tdah,
+        outras_comorbidades: p.outras_comorbidades?.trim() || null,
+        medicamentos_uso: p.medicamentos_uso?.trim() || null,
+        acompanhante_id: acompData.id,
+        grau_parentesco: a.relacao,
+        criado_por: usuario?.id ?? null,
+      })
+      .select('id').single();
+
+    if (pe) { console.error('Erro ao salvar paciente:', pe); return; }
+
+    await db.rpc('fn_registrar_auditoria', {
+      p_usuario_id: usuario?.id ?? null,
+      p_sessao_id: usuario?.sessao_id ?? null,
+      p_acao: 'PACIENTE_CRIADO',
+      p_tabela: 'tb_pacientes',
+      p_registro_id: String(pacRow.id),
+    });
+
+    carregarPacientes();
+  }
+
+  const filtered = pacientes.filter((p) => {
+    if (!q) return true;
+    if (cpfQueryHash) return p.cpfHash === cpfQueryHash;
+    return p.nome.toLowerCase().includes(q.toLowerCase());
+  });
 
   return (
     <div className="anim-fade-in space-y-5">
@@ -366,7 +614,17 @@ function PacientesPage() {
 
       {/* Tabela */}
       <Card className="overflow-hidden">
-        <table className="w-full">
+        {loading && (
+          <div className="px-6 py-8 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
+            Carregando pacientes…
+          </div>
+        )}
+        {!loading && pacientes.length === 0 && (
+          <div className="px-6 py-8 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
+            Nenhum paciente cadastrado.
+          </div>
+        )}
+        {!loading && pacientes.length > 0 && <table className="w-full">
           <thead>
             <tr style={{ background: 'var(--paper-2)' }}>
               {['#','Paciente','Nascimento','CPF','Celular','Acomp.','Último escore','Status','Ações'].map((h, i) => (
@@ -409,7 +667,8 @@ function PacientesPage() {
                     : <span className="text-[12px] font-mono" style={{ color: 'var(--subtle)' }}>Sem triagem</span>}
                 </td>
                 <td className="px-5 py-4">
-                  <button className="text-[12px] font-medium lift" style={{ color: 'var(--ink)' }}
+                  <button onClick={() => setProntuario(p)}
+                    className="text-[12px] font-medium lift" style={{ color: 'var(--ink)' }}
                     onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--muted)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--ink)'; }}>
                     Abrir →
@@ -418,7 +677,7 @@ function PacientesPage() {
               </tr>
             ))}
           </tbody>
-        </table>
+        </table>}
       </Card>
 
       {/* Modal */}
@@ -426,6 +685,13 @@ function PacientesPage() {
         <ModalCadastroPaciente
           onClose={() => setModal(false)}
           onSalvar={handleSalvar}
+        />
+      )}
+
+      {prontuario && (
+        <ModalProntuario
+          paciente={prontuario}
+          onClose={() => setProntuario(null)}
         />
       )}
     </div>

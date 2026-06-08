@@ -2,7 +2,7 @@
 // APP SHELL
 // ═══════════════════════════════════════════════════════════════════════
 function App() {
-  const [logado, setLogado]           = useState(false);
+  const [usuario, setUsuario]         = useState(null);
   const [page, setPage]               = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme]             = useState(() => {
@@ -17,16 +17,19 @@ function App() {
 
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
 
-  function logout() {
-    setLogado(false);
+  async function logout() {
+    if (usuario?.sessao_id) {
+      await db.rpc('fn_logout', { p_sessao_id: usuario.sessao_id });
+    }
+    setUsuario(null);
     setPage('dashboard');
     setSidebarOpen(false);
   }
 
-  if (!logado) {
+  if (!usuario) {
     return (
       <LoginPage
-        onLogin={() => setLogado(true)}
+        onLogin={setUsuario}
         theme={theme}
         onToggleTheme={toggleTheme}
       />
@@ -64,9 +67,9 @@ function App() {
         </Topbar>
         <main className="flex-1 p-6 lg:p-10">
           {page === 'dashboard'    && <DashboardPage onNav={nav} />}
-          {page === 'agenda'       && <AgendaPage />}
-          {page === 'triagem'      && <TriagemPage onNav={nav} />}
-          {page === 'pacientes'    && <PacientesPage />}
+          {page === 'agenda'       && <AgendaPage usuario={usuario} />}
+          {page === 'triagem'      && <TriagemPage onNav={nav} usuario={usuario} />}
+          {page === 'pacientes'    && <PacientesPage usuario={usuario} />}
           {page === 'config'       && <ConfigPage />}
         </main>
         <footer className="px-10 py-8 text-center" style={{ color: 'var(--subtle)' }}>

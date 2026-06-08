@@ -8,7 +8,7 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
   const [erro, setErro]         = useState('');
   const [loading, setLoading]   = useState(false);
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     setErro('');
 
@@ -18,16 +18,24 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
     }
 
     setLoading(true);
-
-    // Simulação — substituir por chamada real à API em /api/v1/auth/login
-    setTimeout(() => {
-      setLoading(false);
-      if (senha === '1234') {
-        onLogin();
-      } else {
+    try {
+      const { data, error } = await db.rpc('fn_login', {
+        p_email: email.trim().toLowerCase(),
+        p_senha: senha,
+        p_user_agent: navigator.userAgent,
+      });
+      if (error) throw error;
+      if (!data || data.length === 0) {
         setErro('Credenciais inválidas. Verifique e tente novamente.');
+      } else {
+        onLogin(data[0]);
       }
-    }, 1000);
+    } catch (err) {
+      console.error('Erro no login:', err);
+      setErro('Erro ao conectar ao servidor. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (

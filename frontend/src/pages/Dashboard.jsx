@@ -259,40 +259,72 @@ function AgendaRow({ appt, onNav, isLast, onReagendar }) {
 function DashboardPage({ onNav }) {
   const [modalReagendar, setModalReagendar] = useState(null);
 
-  const stats = [
-    {
-      label: 'Triagens hoje', value: '14', sub: 'Sessões clínicas',
-      detail: [
-        { label: 'Manhã (08h–12h)', val: '9' },
-        { label: 'Tarde (13h–18h)', val: '5' },
-        { label: 'Vs. ontem',       val: '+3' },
-      ],
-    },
-    {
-      label: 'Encaminhamentos', value: '4', sub: 'Para teste genético',
-      detail: [
-        { label: 'Limiar aplicado', val: '≥ 0.56 (♂)' },
-        { label: 'Score médio',     val: '0.61' },
-        { label: 'Pendentes',       val: '2' },
-      ],
-    },
-    {
-      label: 'Baixo risco', value: '10', sub: 'Após escore SXF',
-      detail: [
-        { label: 'Score médio',        val: '0.31' },
-        { label: 'Em acompanhamento',  val: '8' },
-        { label: 'Alta clínica',       val: '2' },
-      ],
-    },
-    {
-      label: 'Pacientes ativos', value: '362', sub: 'Em prontuário',
-      detail: [
-        { label: 'Novos este mês', val: '+18' },
-        { label: 'Com triagem',    val: '289' },
-        { label: 'Sem triagem',    val: '73' },
-      ],
-    },
-  ];
+  const [stats, setStats] = useState([]);
+
+  useEffect(() => {
+    async function carregar() {
+      const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+
+      const { data: avals } = await db
+        .from('tb_avaliacoes')
+        .select('score_final, data_avaliacao, paciente_id, tb_pacientes(sexo)')
+        .eq('status', 'finalizada');
+
+      const { count: ativos } = await db
+        .from('tb_pacientes')
+        .select('id', { count: 'exact', head: true })
+        .eq('ativo', true);
+
+      const lista = (avals || []).map(a => {
+        const score = Number(a.score_final);
+        const limiar = a.tb_pacientes?.sexo === 'M' ? 0.56 : 0.55;
+        return { score, encaminha: score >= limiar, data: new Date(a.data_avaliacao), pid: a.paciente_id };
+      });
+
+      const ehHoje = (d) => d >= hoje;
+      const encaminhados = lista.filter(a => a.encaminha);
+      const baixos = lista.filter(a => !a.encaminha);
+      const comTriagem = new Set(lista.map(a => a.pid)).size;
+      const semTriagem = Math.max(0, (ativos || 0) - comTriagem);
+      const media = (arr) => arr.length ? (arr.reduce((s, a) => s + a.score, 0) / arr.length).toFixed(2) : '0.00';
+
+      setStats([
+        {
+          label: 'Triagens hoje', value: String(lista.filter(a => ehHoje(a.data)).length), sub: 'Sessões clínicas',
+          detail: [
+            { label: 'Total geral',       val: String(lista.length) },
+            { label: 'Encaminhadas hoje', val: String(lista.filter(a => ehHoje(a.data) && a.encaminha).length) },
+            { label: 'Baixo risco hoje',  val: String(lista.filter(a => ehHoje(a.data) && !a.encaminha).length) },
+          ],
+        },
+        {
+          label: 'Encaminhamentos', value: String(encaminhados.length), sub: 'Para teste genético',
+          detail: [
+            { label: 'Limiar ♂',    val: '≥ 0.56' },
+            { label: 'Limiar ♀',    val: '≥ 0.55' },
+            { label: 'Score médio', val: media(encaminhados) },
+          ],
+        },
+        {
+          label: 'Baixo risco', value: String(baixos.length), sub: 'Após escore SXF',
+          detail: [
+            { label: 'Score médio',   val: media(baixos) },
+            { label: 'Total triagens', val: String(lista.length) },
+            { label: 'Hoje',          val: String(lista.filter(a => ehHoje(a.data) && !a.encaminha).length) },
+          ],
+        },
+        {
+          label: 'Pacientes ativos', value: String(ativos || 0), sub: 'Em prontuário',
+          detail: [
+            { label: 'Com triagem', val: String(comTriagem) },
+            { label: 'Sem triagem', val: String(semTriagem) },
+            { label: 'Total',       val: String(ativos || 0) },
+          ],
+        },
+      ]);
+    }
+    carregar();
+  }, []);
 
   const appointments = [
     { time: '08:30', name: 'Lívia Andrade',  type: 'Triagem SXF',       status: 'sage',    statusLabel: 'Confirmado',     age: '7a 4m' },
