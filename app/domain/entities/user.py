@@ -11,7 +11,7 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-class UserRole(StrEnum):
+class UserRole(StrEnum):  # Enum para deifinir os tipos de roles que existem no sistema
     """Roles the system recognises in v1."""
 
     DOCTOR = "doctor"
