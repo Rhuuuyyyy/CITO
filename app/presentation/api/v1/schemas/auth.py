@@ -10,3 +10,4 @@ class TokenLoginResponse(BaseModel):
     access_token: str
     token_type: str = "Bearer"
     sessao_id: int
+    usuario_id: int

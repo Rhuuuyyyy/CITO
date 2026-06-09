@@ -383,15 +383,10 @@ function ModalProntuario({ paciente, onClose }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    db.from('tb_avaliacoes')
-      .select('id, data_avaliacao, score_final, status, tb_encaminhamentos(tipo, gerado_automaticamente)')
-      .eq('paciente_id', paciente.id)
-      .order('data_avaliacao', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) console.error('Erro ao carregar prontuário:', error);
-        setAvaliacoes(data || []);
-        setLoading(false);
-      });
+    api.getHistorico(paciente.id)
+      .then((data) => { setAvaliacoes(data.items || []); })
+      .catch((err) => { console.error('Erro ao carregar prontuário:', err); })
+      .finally(() => setLoading(false));
   }, [paciente.id]);
 
   const limiar = paciente.sexo === 'M' ? 0.56 : 0.55;
@@ -434,17 +429,16 @@ function ModalProntuario({ paciente, onClose }) {
           <div className="space-y-3">
             {avaliacoes.map((a) => {
               const score = a.score_final != null ? Number(a.score_final) : null;
-              const encaminha = score != null && score >= limiar;
-              const encs = a.tb_encaminhamentos || [];
+              const encaminha = !!a.recomenda_exame;
               return (
-                <div key={a.id} className="rounded-2xl p-5"
+                <div key={a.avaliacao_id} className="rounded-2xl p-5"
                   style={{ border: '1px solid var(--hair)', background: 'var(--paper-2)' }}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[12.5px] font-mono" style={{ color: 'var(--muted)' }}>
                       {new Date(a.data_avaliacao).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    <Pill tone={a.status === 'finalizada' ? (encaminha ? 'honey' : 'sage') : 'neutral'}>
-                      {a.status === 'finalizada' ? (encaminha ? 'Encaminhar' : 'Baixo risco') : a.status}
+                    <Pill tone={encaminha ? 'honey' : 'sage'}>
+                      {encaminha ? 'Encaminhar' : 'Baixo risco'}
                     </Pill>
                   </div>
                   <div className="flex items-baseline gap-2">
@@ -455,11 +449,9 @@ function ModalProntuario({ paciente, onClose }) {
                       limiar {paciente.sexo === 'M' ? '♂' : '♀'} {limiar}
                     </span>
                   </div>
-                  {encs.length > 0 && (
+                  {encaminha && (
                     <div className="flex flex-wrap gap-2 mt-3">
-                      {encs.map((e, i) => (
-                        <Pill key={i} tone="honey">{e.tipo}{e.gerado_automaticamente ? ' · auto' : ''}</Pill>
-                      ))}
+                      <Pill tone="honey">exame_fmr1 · auto</Pill>
                     </div>
                   )}
                 </div>
@@ -485,113 +477,113 @@ function PacientesPage({ usuario }) {
   const [modal, setModal]     = useState(false);
   const [pacientes, setPacientes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [cpfQueryHash, setCpfQueryHash] = useState(null);
   const [prontuario, setProntuario] = useState(null);
 
-  async function carregarPacientes() {
+  async function carregarPacientes(params) {
     setLoading(true);
-    const { data, error } = await db
-      .from('tb_pacientes')
-      .select('id, nome_criptografado, data_nascimento, sexo, cpf_hash, acompanhante_id, tb_acompanhantes(telefone), tb_avaliacoes(score_final, status, data_avaliacao)')
-      .eq('ativo', true)
-      .order('id', { ascending: false });
-
-    if (error) {
-      console.error('Erro ao carregar pacientes:', error);
-    } else if (data) {
-      setPacientes(data.map(p => {
+    try {
+      const data = await api.getPacientes(params);
+      setPacientes((data.items || []).map(p => {
         const [y, m, d] = (p.data_nascimento || '').split('-');
-
-        const finalizadas = (p.tb_avaliacoes || [])
-          .filter(a => a.status === 'finalizada' && a.score_final != null)
-          .sort((a, b) => new Date(b.data_avaliacao) - new Date(a.data_avaliacao));
-        const ultima = finalizadas[0];
-        const score = ultima ? Number(ultima.score_final) : 0;
-        const limiar = p.sexo === 'M' ? 0.56 : 0.55;
-
+        const score = p.ultimo_score != null ? Number(p.ultimo_score) : 0;
         return {
-          id:      p.id,
-          nome:    decodeNome(p.nome_criptografado) || '—',
-          sexo:    p.sexo,
-          nasc:    d ? `${d}/${m}/${y}` : '—',
-          cpf:     p.cpf_hash ? '***.***.***-**' : '—',
-          cpfHash: p.cpf_hash || null,
-          cel:     p.tb_acompanhantes?.telefone || '—',
-          ult:     ultima ? new Date(ultima.data_avaliacao).toLocaleDateString('pt-BR') : '—',
-          risco:   score >= limiar ? 'encaminhar' : 'baixo',
-          score:   score,
-          acomps:  p.acompanhante_id ? 1 : 0,
+          id:     p.id,
+          nome:   p.nome || '—',
+          sexo:   p.sexo,
+          nasc:   d ? `${d}/${m}/${y}` : '—',
+          cpf:    p.cpf_masked || '—',
+          cel:    p.telefone || '—',
+          ult:    p.ultima_avaliacao
+            ? new Date(p.ultima_avaliacao + 'T00:00:00').toLocaleDateString('pt-BR')
+            : '—',
+          risco:  p.recomenda_exame ? 'encaminhar' : 'baixo',
+          score:  score,
+          acomps: p.tem_acompanhante ? 1 : 0,
         };
       }));
+    } catch (err) {
+      console.error('Erro ao carregar pacientes:', err);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
-  useEffect(() => { carregarPacientes(); }, []);
-
+  // Server-side search: names are masked in the API, so filtering must run on the backend.
   useEffect(() => {
-    const digits = q.replace(/\D/g, '');
-    if (digits.length === 11) {
-      hashCpf(q).then(setCpfQueryHash);
-    } else {
-      setCpfQueryHash(null);
-    }
+    const handle = setTimeout(() => {
+      const digits = q.replace(/\D/g, '');
+      if (digits.length === 11) carregarPacientes({ cpf: digits });
+      else if (q.trim()) carregarPacientes({ nome: q.trim() });
+      else carregarPacientes();
+    }, 300);
+    return () => clearTimeout(handle);
   }, [q]);
 
   async function handleSalvar({ paciente: p, acompanhantes }) {
     const a = acompanhantes[0];
 
-    const { data: acompData, error: ae } = await db
-      .from('tb_acompanhantes')
-      .insert({
-        nome_criptografado: encodeNome(a.nome),
+    const body = {
+      nome: p.nome,
+      cpf: (p.cpf || '').replace(/\D/g, '') || null,
+      data_nascimento: p.dataNasc,
+      sexo: p.sexo,
+      etnia: p.etnia || null,
+      escolaridade: p.escolaridade || null,
+      prematuro: p.prematuro,
+      tem_diagnostico_autismo: p.tem_diagnostico_autismo,
+      tem_diagnostico_tdah: p.tem_diagnostico_tdah,
+      outras_comorbidades: p.outras_comorbidades?.trim() || null,
+      medicamentos_uso: p.medicamentos_uso?.trim() || null,
+      acompanhante: {
+        nome: a.nome,
+        relacao: a.relacao,
         telefone: a.telefone || null,
         email: a.email || null,
-      })
-      .select('id')
-      .single();
+      },
+    };
 
-    if (ae) { console.error('Erro ao salvar acompanhante:', ae); return; }
-
-    const cpfHash = await hashCpf(p.cpf);
-    const { data: pacRow, error: pe } = await db
-      .from('tb_pacientes')
-      .insert({
-        nome_criptografado: encodeNome(p.nome),
-        data_nascimento: p.dataNasc,
-        sexo: p.sexo,
-        cpf_hash: cpfHash,
-        etnia: p.etnia || null,
-        escolaridade: p.escolaridade || null,
-        prematuro: p.prematuro,
-        tem_diagnostico_autismo: p.tem_diagnostico_autismo,
-        tem_diagnostico_tdah: p.tem_diagnostico_tdah,
-        outras_comorbidades: p.outras_comorbidades?.trim() || null,
-        medicamentos_uso: p.medicamentos_uso?.trim() || null,
-        acompanhante_id: acompData.id,
-        grau_parentesco: a.relacao,
-        criado_por: usuario?.id ?? null,
-      })
-      .select('id').single();
-
-    if (pe) { console.error('Erro ao salvar paciente:', pe); return; }
-
-    await db.rpc('fn_registrar_auditoria', {
-      p_usuario_id: usuario?.id ?? null,
-      p_sessao_id: usuario?.sessao_id ?? null,
-      p_acao: 'PACIENTE_CRIADO',
-      p_tabela: 'tb_pacientes',
-      p_registro_id: String(pacRow.id),
-    });
+    try {
+      await api.createPaciente(body);
+    } catch (err) {
+      console.error('Erro ao salvar paciente:', err);
+      alert('Não foi possível salvar o paciente: ' + (err.message || 'erro desconhecido'));
+      return;
+    }
 
     carregarPacientes();
   }
 
-  const filtered = pacientes.filter((p) => {
-    if (!q) return true;
-    if (cpfQueryHash) return p.cpfHash === cpfQueryHash;
-    return p.nome.toLowerCase().includes(q.toLowerCase());
-  });
+  // Exporta a lista atual (já carregada/filtrada) como CSV. Client-side, sem backend.
+  // Separador ';' + BOM para abrir bem no Excel em pt-BR. Dados já mascarados (LGPD).
+  function exportarCSV() {
+    if (!pacientes.length) return;
+    const headers = ['Nome', 'Nascimento', 'CPF', 'Celular', 'Acompanhante',
+      'Último escore', 'Última avaliação', 'Status'];
+    const linhas = pacientes.map((p) => [
+      p.nome,
+      p.nasc,
+      p.cpf,
+      p.cel,
+      p.acomps ? 'Sim' : 'Não',
+      p.score > 0 ? p.score.toFixed(2) : '',
+      p.ult !== '—' ? p.ult : '',
+      p.score > 0 ? (p.risco === 'encaminhar' ? 'Encaminhar' : 'Baixo risco') : 'Sem triagem',
+    ]);
+    const esc = (v) => {
+      const s = String(v ?? '');
+      return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+    };
+    const csv = [headers, ...linhas].map((r) => r.map(esc).join(';')).join('\r\n');
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pacientes-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div className="anim-fade-in space-y-5">
@@ -607,7 +599,7 @@ function PacientesPage({ usuario }) {
               style={inputStyle} />
           </div>
           <BtnGhost>{Icon.chevronDown} Filtros</BtnGhost>
-          <BtnGhost>{Icon.chevronDown} Exportar CSV</BtnGhost>
+          <BtnGhost onClick={exportarCSV}>{Icon.chevronDown} Exportar CSV</BtnGhost>
           <BtnPrimary onClick={() => setModal(true)}>{Icon.plus} Novo paciente</BtnPrimary>
         </div>
       </Card>
@@ -634,9 +626,9 @@ function PacientesPage({ usuario }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p, i) => (
+            {pacientes.map((p, i) => (
               <tr key={i} className="lift"
-                style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--hair-soft)' : 'none' }}
+                style={{ borderBottom: i < pacientes.length - 1 ? '1px solid var(--hair-soft)' : 'none' }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--paper-2)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
                 <td className="px-5 py-4 font-mono text-[12px]" style={{ color: 'var(--subtle)' }}>

@@ -68,6 +68,12 @@ class RegisterPatientUseCase:
             else:
                 acompanhante_id = existing.id
 
+        # The caregiver's relationship to the patient (e.g. "Mãe") is sent inside
+        # the acompanhante block and stored on the patient as grau_parentesco.
+        grau_parentesco = (
+            request.acompanhante.relacao if request.acompanhante is not None else None
+        )
+
         # Step 2 — Build and persist the Patient entity
         patient_cpf = CPF(request.cpf) if request.cpf else None
 
@@ -76,7 +82,7 @@ class RegisterPatientUseCase:
             full_name=request.nome,
             birth_date=request.data_nascimento,
             sex_at_birth=SexAtBirth(request.sexo.upper()),
-            etnia=Etnia(request.etnia.lower()),
+            etnia=Etnia(request.etnia.lower()) if request.etnia else None,
             uf_nascimento=request.uf_nascimento,
             municipio_residencia=request.municipio_residencia,
             uf_residencia=request.uf_residencia,
@@ -88,7 +94,7 @@ class RegisterPatientUseCase:
             tem_diagnostico_tdah=request.tem_diagnostico_tdah,
             outras_comorbidades=request.outras_comorbidades,
             medicamentos_uso=request.medicamentos_uso,
-            grau_parentesco=request.grau_parentesco,
+            grau_parentesco=grau_parentesco,
             diagnostico_confirmado_fxs=request.diagnostico_confirmado_fxs,
             acompanhante_id=acompanhante_id,
             criado_por_db_id=usuario_db_id,

@@ -1,7 +1,8 @@
-"""Concrete adapter: persists Acompanhante via the 'acompanhantes' DB view."""
-from typing import cast
-from uuid import UUID
+"""Concrete adapter: persists Acompanhante via the 'acompanhantes' DB view.
 
+The view's INSTEAD OF trigger encrypts ``nome`` into ``nome_criptografado``;
+the application always works with clear text. The ``id`` is a DB SERIAL.
+"""
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,39 +15,45 @@ class AcompanhanteRepository:
         self._session = session
 
     async def add(self, acompanhante: Acompanhante) -> Acompanhante:
-        await self._session.execute(
+        """Persist a new acompanhante and return it with the DB id populated."""
+        result = await self._session.execute(
             text(
                 """
-                INSERT INTO acompanhantes (id, nome, cpf_hash, telefone, email)
-                VALUES (:id, :nome, :cpf_hash, :telefone, :email)
+                INSERT INTO acompanhantes (nome, cpf_hash, telefone, email)
+                VALUES (:nome, :cpf_hash, :telefone, :email)
+                RETURNING id
                 """
             ),
             {
-                "id": str(acompanhante.id),
                 "nome": acompanhante.nome,
                 "cpf_hash": acompanhante.cpf.sha256_hex if acompanhante.cpf else None,
                 "telefone": acompanhante.telefone,
                 "email": acompanhante.email,
             },
         )
-        return acompanhante
+        row = result.mappings().first()
+        if row is None:
+            raise RuntimeError(
+                "Falha ao inserir acompanhante — RETURNING id não retornou valor"
+            )
+        return acompanhante.model_copy(update={"id": int(row["id"])})
 
-    async def get_by_id(self, entity_id: UUID) -> Acompanhante | None:
+    async def get_by_id(self, entity_id: int) -> Acompanhante | None:
         result = await self._session.execute(
             text(
                 "SELECT id, nome, telefone, email FROM acompanhantes WHERE id = :id"
             ),
-            {"id": str(entity_id)},
+            {"id": entity_id},
         )
         row = result.mappings().first()
         if row is None:
             return None
         return Acompanhante(
-            id=cast(UUID, row["id"]),
-            nome=cast(str, row["nome"]),
+            id=int(row["id"]),
+            nome=str(row["nome"]),
             cpf=None,
-            telefone=cast(str, row["telefone"]),
-            email=cast(str, row["email"]),
+            telefone=row["telefone"],
+            email=row["email"],
         )
 
     async def get_by_cpf(self, cpf: CPF) -> Acompanhante | None:
@@ -63,9 +70,9 @@ class AcompanhanteRepository:
         if row is None:
             return None
         return Acompanhante(
-            id=cast(UUID, row["id"]),
-            nome=cast(str, row["nome"]),
+            id=int(row["id"]),
+            nome=str(row["nome"]),
             cpf=None,
-            telefone=cast(str, row["telefone"]),
-            email=cast(str, row["email"]),
+            telefone=row["telefone"],
+            email=row["email"],
         )

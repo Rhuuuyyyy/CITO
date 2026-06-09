@@ -101,13 +101,15 @@ async def get_dashboard_stats(
     return DashboardStatsResponse(
         rows=[
             DashboardRowSchema(
-                uf_residencia=row.uf_residencia,
+                sintoma=row.sintoma,
                 sexo=row.sexo,
-                faixa_etaria=row.faixa_etaria,
+                idade_anos=row.idade_anos,
                 etnia=row.etnia,
+                uf_residencia=row.uf_residencia,
                 total_avaliacoes=row.total_avaliacoes,
-                media_score=row.media_score,
-                taxa_recomendacao_exame=row.taxa_recomendacao_exame,
+                total_presentes=row.total_presentes,
+                prevalencia_pct=row.prevalencia_pct,
+                versao_parametro=row.versao_parametro,
             )
             for row in result.rows
         ],

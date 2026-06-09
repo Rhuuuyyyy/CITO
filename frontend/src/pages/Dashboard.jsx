@@ -213,8 +213,8 @@ function AgendaRow({ appt, onNav, isLast, onReagendar }) {
             <div className="text-[12px] flex items-center gap-1.5 mt-0.5"
               style={{ color: 'var(--muted)' }}>
               <span>{appt.type}</span>
-              <span style={{ color: 'var(--hair)' }}>·</span>
-              <span className="font-mono">{appt.age}</span>
+              {appt.age && <span style={{ color: 'var(--hair)' }}>·</span>}
+              {appt.age && <span className="font-mono">{appt.age}</span>}
             </div>
           </div>
         </div>
@@ -260,65 +260,54 @@ function DashboardPage({ onNav }) {
   const [modalReagendar, setModalReagendar] = useState(null);
 
   const [stats, setStats] = useState([]);
+  const [appointments, setAppointments] = useState([]);
+  const [loadingAg, setLoadingAg] = useState(true);
 
   useEffect(() => {
     async function carregar() {
-      const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+      let s;
+      try {
+        s = await api.getDashboardSummary();
+      } catch (err) {
+        console.error('Erro ao carregar resumo do dashboard:', err);
+        return;
+      }
 
-      const { data: avals } = await db
-        .from('tb_avaliacoes')
-        .select('score_final, data_avaliacao, paciente_id, tb_pacientes(sexo)')
-        .eq('status', 'finalizada');
-
-      const { count: ativos } = await db
-        .from('tb_pacientes')
-        .select('id', { count: 'exact', head: true })
-        .eq('ativo', true);
-
-      const lista = (avals || []).map(a => {
-        const score = Number(a.score_final);
-        const limiar = a.tb_pacientes?.sexo === 'M' ? 0.56 : 0.55;
-        return { score, encaminha: score >= limiar, data: new Date(a.data_avaliacao), pid: a.paciente_id };
-      });
-
-      const ehHoje = (d) => d >= hoje;
-      const encaminhados = lista.filter(a => a.encaminha);
-      const baixos = lista.filter(a => !a.encaminha);
-      const comTriagem = new Set(lista.map(a => a.pid)).size;
-      const semTriagem = Math.max(0, (ativos || 0) - comTriagem);
-      const media = (arr) => arr.length ? (arr.reduce((s, a) => s + a.score, 0) / arr.length).toFixed(2) : '0.00';
+      const pct = s.taxa_recomendacao_exame != null
+        ? Math.round(s.taxa_recomendacao_exame * 100) + '%'
+        : '—';
 
       setStats([
         {
-          label: 'Triagens hoje', value: String(lista.filter(a => ehHoje(a.data)).length), sub: 'Sessões clínicas',
+          label: 'Triagens hoje', value: String(s.avaliacoes_hoje), sub: 'Sessões clínicas',
           detail: [
-            { label: 'Total geral',       val: String(lista.length) },
-            { label: 'Encaminhadas hoje', val: String(lista.filter(a => ehHoje(a.data) && a.encaminha).length) },
-            { label: 'Baixo risco hoje',  val: String(lista.filter(a => ehHoje(a.data) && !a.encaminha).length) },
+            { label: 'Na semana',       val: String(s.avaliacoes_semana) },
+            { label: 'Pacientes ativos', val: String(s.total_pacientes) },
+            { label: 'Taxa encaminh.',  val: pct },
           ],
         },
         {
-          label: 'Encaminhamentos', value: String(encaminhados.length), sub: 'Para teste genético',
+          label: 'Avaliações · 7 dias', value: String(s.avaliacoes_semana), sub: 'Últimos 7 dias',
           detail: [
-            { label: 'Limiar ♂',    val: '≥ 0.56' },
-            { label: 'Limiar ♀',    val: '≥ 0.55' },
-            { label: 'Score médio', val: media(encaminhados) },
+            { label: 'Hoje',           val: String(s.avaliacoes_hoje) },
+            { label: 'Pacientes',      val: String(s.total_pacientes) },
+            { label: 'Taxa encaminh.', val: pct },
           ],
         },
         {
-          label: 'Baixo risco', value: String(baixos.length), sub: 'Após escore SXF',
+          label: 'Taxa de encaminhamento', value: pct, sub: 'Para teste genético',
           detail: [
-            { label: 'Score médio',   val: media(baixos) },
-            { label: 'Total triagens', val: String(lista.length) },
-            { label: 'Hoje',          val: String(lista.filter(a => ehHoje(a.data) && !a.encaminha).length) },
+            { label: 'Limiar ♂',       val: '≥ 0.56' },
+            { label: 'Limiar ♀',       val: '≥ 0.55' },
+            { label: 'Avaliações 7d',  val: String(s.avaliacoes_semana) },
           ],
         },
         {
-          label: 'Pacientes ativos', value: String(ativos || 0), sub: 'Em prontuário',
+          label: 'Pacientes ativos', value: String(s.total_pacientes), sub: 'Em prontuário',
           detail: [
-            { label: 'Com triagem', val: String(comTriagem) },
-            { label: 'Sem triagem', val: String(semTriagem) },
-            { label: 'Total',       val: String(ativos || 0) },
+            { label: 'Avaliações hoje', val: String(s.avaliacoes_hoje) },
+            { label: 'Avaliações 7d',   val: String(s.avaliacoes_semana) },
+            { label: 'Taxa encaminh.',  val: pct },
           ],
         },
       ]);
@@ -326,14 +315,42 @@ function DashboardPage({ onNav }) {
     carregar();
   }, []);
 
-  const appointments = [
-    { time: '08:30', name: 'Lívia Andrade',  type: 'Triagem SXF',       status: 'sage',    statusLabel: 'Confirmado',     age: '7a 4m' },
-    { time: '09:15', name: 'Joaquim Pessoa', type: 'Retorno',           status: 'neutral', statusLabel: 'Aguardando',     age: '11a 2m' },
-    { time: '10:00', name: 'Beatriz Coelho', type: 'Primeira consulta', status: 'honey',   statusLabel: 'Em atendimento', age: '5a 9m' },
-    { time: '10:45', name: 'Davi Reinaldo',  type: 'Triagem SXF',       status: 'sage',    statusLabel: 'Confirmado',     age: '8a 1m' },
-    { time: '11:30', name: 'Sofia Vidigal',  type: 'Encaminhamento',    status: 'rust',    statusLabel: 'Pendente',       age: '6a 8m' },
-    { time: '14:00', name: 'Théo Ramires',   type: 'Retorno',           status: 'sage',    statusLabel: 'Confirmado',     age: '9a 11m' },
-  ];
+  // Agenda real do dia (mesmo endpoint da página Agenda; escopo = médico do JWT).
+  useEffect(() => {
+    const STATUS = {
+      confirmado:     ['sage',    'Confirmado'],
+      aguardando:     ['neutral', 'Aguardando'],
+      em_atendimento: ['honey',   'Em atendimento'],
+      pendente:       ['rust',    'Pendente'],
+    };
+    const hoje = new Date();
+    const mesmoDia = (d) =>
+      d.getFullYear() === hoje.getFullYear() &&
+      d.getMonth() === hoje.getMonth() &&
+      d.getDate() === hoje.getDate();
+
+    api.getAgendamentos()
+      .then((data) => {
+        const doDia = (data || [])
+          .map((a) => ({ ...a, _d: new Date(a.data_hora) }))
+          .filter((a) => mesmoDia(a._d))
+          .sort((a, b) => a._d - b._d)
+          .map((a) => {
+            const [tone, label] = STATUS[a.status] || ['neutral', a.status];
+            return {
+              time: a._d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+              name: a.titulo,
+              type: a.tipo || '—',
+              age: '',
+              status: tone,
+              statusLabel: label,
+            };
+          });
+        setAppointments(doDia);
+      })
+      .catch((err) => console.error('Erro ao carregar agenda do dia:', err))
+      .finally(() => setLoadingAg(false));
+  }, []);
 
   return (
     <div className="anim-fade-in space-y-5">
@@ -391,7 +408,9 @@ function DashboardPage({ onNav }) {
           <div>
             <h3 className="font-display text-[22px] leading-none">Agenda de hoje</h3>
             <div className="text-[12px] mt-1" style={{ color: 'var(--muted)' }}>
-              {appointments.length} consultas · passe o mouse para ver ações
+              {loadingAg
+                ? 'Carregando…'
+                : `${appointments.length} ${appointments.length === 1 ? 'consulta' : 'consultas'} · passe o mouse para ver ações`}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -401,7 +420,17 @@ function DashboardPage({ onNav }) {
         </div>
 
         <div>
-          {appointments.map((a, i) => (
+          {loadingAg && (
+            <div className="px-5 py-8 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
+              Carregando agenda…
+            </div>
+          )}
+          {!loadingAg && appointments.length === 0 && (
+            <div className="px-5 py-8 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
+              Nenhuma consulta agendada para hoje.
+            </div>
+          )}
+          {!loadingAg && appointments.map((a, i) => (
             <AgendaRow
               key={i}
               appt={a}
@@ -415,7 +444,7 @@ function DashboardPage({ onNav }) {
         <div className="px-5 py-3 flex items-center justify-between"
           style={{ borderTop: '1px solid var(--hair-soft)', background: 'var(--paper-2)' }}>
           <span className="text-[11.5px]" style={{ color: 'var(--muted)' }}>
-            2 consultas em janela de urgência
+            {appointments.length} {appointments.length === 1 ? 'consulta hoje' : 'consultas hoje'}
           </span>
           <button className="text-[12px] font-medium lift"
             style={{ color: 'var(--ink)' }}

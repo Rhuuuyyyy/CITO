@@ -23,7 +23,15 @@ from app.core.exceptions import (
     SXFpError,
 )
 from app.db.database import engine
-from app.presentation.api.v1.routers import anamnesis, auth, history, patients
+from app.presentation.api.v1.routers import (
+    agendamentos,
+    anamnesis,
+    auth,
+    history,
+    patients,
+    relatorios,
+    symptoms,
+)
 
 
 @asynccontextmanager
@@ -143,6 +151,9 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix=settings.api_prefix)
     app.include_router(patients.router, prefix=settings.api_prefix)
     app.include_router(history.router, prefix=settings.api_prefix)
+    app.include_router(symptoms.router, prefix=settings.api_prefix)
+    app.include_router(agendamentos.router, prefix=settings.api_prefix)
+    app.include_router(relatorios.router, prefix=settings.api_prefix)
 
     # ── Health probe (outside api_prefix for infra / k8s) ────────────────────
     @app.get("/health", tags=["Meta"])

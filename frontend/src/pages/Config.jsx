@@ -43,22 +43,20 @@ function RelatoriosSection({ onBack }) {
   const [norm, setNorm] = useState([]);
 
   useEffect(() => {
-    db.from('tb_avaliacoes')
-      .select('score_final, data_avaliacao, tb_pacientes(sexo, nome_criptografado)')
-      .eq('status', 'finalizada')
-      .order('data_avaliacao', { ascending: false })
-      .then(({ data }) => {
+    api.getRelatorioAvaliacoes()
+      .then((data) => {
         setNorm((data || []).map(a => {
           const score = Number(a.score_final);
-          const sexo = a.tb_pacientes?.sexo;
+          const sexo = a.sexo;
           return {
             score, sexo,
-            nome: decodeNome(a.tb_pacientes?.nome_criptografado) || '—',
+            nome: a.nome_masked || '—',
             data: new Date(a.data_avaliacao),
             encaminha: score >= (sexo === 'M' ? 0.56 : 0.55),
           };
         }));
-      });
+      })
+      .catch((err) => console.error('Erro ao carregar relatórios:', err));
   }, []);
 
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);

@@ -76,6 +76,7 @@ async def login(
         access_token=access_token,
         token_type="Bearer",
         sessao_id=sessao_id,
+        usuario_id=usuario_id,
     )
 
 

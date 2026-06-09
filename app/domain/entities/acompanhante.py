@@ -1,6 +1,4 @@
 """Acompanhante domain entity — legal guardian or caregiver of a patient."""
-from uuid import UUID, uuid4
-
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.domain.value_objects.cpf import CPFAnnotated
@@ -14,11 +12,12 @@ class Acompanhante(BaseModel):
         validate_assignment=True,
     )
 
-    id: UUID = Field(default_factory=uuid4)
+    # Integer SERIAL id from the DB. None until persisted (set by the repository).
+    id: int | None = None
     nome: str = Field(min_length=2, max_length=120)
     cpf: CPFAnnotated | None = None
-    telefone: str = Field(min_length=8, max_length=20)
-    email: str = Field(max_length=254)
+    telefone: str | None = None
+    email: str | None = None
 
     @property
     def cpf_hash(self) -> str | None:

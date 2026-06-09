@@ -19,20 +19,15 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
 
     setLoading(true);
     try {
-      const { data, error } = await db.rpc('fn_login', {
-        p_email: email.trim().toLowerCase(),
-        p_senha: senha,
-        p_user_agent: navigator.userAgent,
-      });
-      if (error) throw error;
-      if (!data || data.length === 0) {
-        setErro('Credenciais inválidas. Verifique e tente novamente.');
-      } else {
-        onLogin(data[0]);
-      }
+      const user = await api.login(email.trim().toLowerCase(), senha);
+      onLogin(user);
     } catch (err) {
       console.error('Erro no login:', err);
-      setErro('Erro ao conectar ao servidor. Tente novamente.');
+      setErro(
+        err.status === 400 || err.status === 401
+          ? 'Credenciais inválidas. Verifique e tente novamente.'
+          : 'Erro ao conectar ao servidor. Tente novamente.'
+      );
     } finally {
       setLoading(false);
     }

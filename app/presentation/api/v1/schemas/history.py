@@ -39,13 +39,15 @@ class DashboardSummaryResponse(BaseModel):
 class DashboardRowSchema(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    uf_residencia: str | None = None
+    sintoma: str | None = None
     sexo: str | None = None
-    faixa_etaria: str | None = None
+    idade_anos: int | None = None
     etnia: str | None = None
+    uf_residencia: str | None = None
     total_avaliacoes: int
-    media_score: float | None = None
-    taxa_recomendacao_exame: float | None = None
+    total_presentes: int | None = None
+    prevalencia_pct: float | None = None
+    versao_parametro: str | None = None
 
 
 class DashboardStatsResponse(BaseModel):

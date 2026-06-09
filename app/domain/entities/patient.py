@@ -1,7 +1,6 @@
-"""Patient domain entity (subject of FXS evaluation) — v3.0 schema."""
+"""Patient domain entity (subject of FXS evaluation)."""
 from datetime import UTC, date, datetime
 from enum import StrEnum
-from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,6 +24,7 @@ class Etnia(StrEnum):
 
 class Escolaridade(StrEnum):
     SEM_ESCOLARIDADE = "sem_escolaridade"
+    EDUCACAO_INFANTIL = "educacao_infantil"
     FUNDAMENTAL_INCOMPLETO = "fundamental_incompleto"
     FUNDAMENTAL_COMPLETO = "fundamental_completo"
     MEDIO_INCOMPLETO = "medio_incompleto"
@@ -36,7 +36,11 @@ class Escolaridade(StrEnum):
 
 
 class Patient(BaseModel):
-    """Person registered for FXS evaluation."""
+    """Person registered for FXS evaluation.
+
+    Identity is the integer SERIAL ``id`` from the ``pacientes`` view. It is
+    ``None`` until the repository persists the row and back-fills it.
+    """
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -45,8 +49,7 @@ class Patient(BaseModel):
         validate_assignment=True,
     )
 
-    id: UUID = Field(default_factory=uuid4)
-    db_id: int | None = Field(default=None, exclude=True)
+    id: int | None = None
     cpf: CPFAnnotated | None = None
     full_name: str = Field(min_length=2, max_length=120)
     birth_date: date
@@ -57,11 +60,12 @@ class Patient(BaseModel):
         description="FK para usuarios.id (SERIAL do banco)",
     )
 
-    # v3.0 demographic fields
-    etnia: Etnia
-    uf_nascimento: str = Field(min_length=2, max_length=2)
-    municipio_residencia: str = Field(min_length=2, max_length=120)
-    uf_residencia: str = Field(min_length=2, max_length=2)
+    # Demographic fields — all optional (the registration form does not
+    # collect place-of-birth/residence; the DB columns are nullable).
+    etnia: Etnia | None = None
+    uf_nascimento: str | None = None
+    municipio_residencia: str | None = None
+    uf_residencia: str | None = None
     prematuro: bool = False
     idade_gestacional_semanas: int | None = None
     peso_nascimento_gramas: float | None = None
@@ -70,13 +74,11 @@ class Patient(BaseModel):
     tem_diagnostico_tdah: bool = False
     outras_comorbidades: str | None = None
     medicamentos_uso: str | None = None
-    acompanhante_id: UUID | None = None
+    acompanhante_id: int | None = None
     grau_parentesco: str | None = None
-    diagnostico_confirmado_fxs: bool | None = None
+    diagnostico_confirmado_fxs: bool = False
 
-    created_at: datetime = Field(
-        default_factory=lambda: datetime.now(UTC)
-    )
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
     @property
     def cpf_hash(self) -> str | None:

@@ -2,20 +2,23 @@
 from __future__ import annotations
 
 from datetime import date
-from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class AcompanhanteCreateRequest(BaseModel):
-    """Optional caregiver/guardian data."""
+    """Caregiver/guardian data. Only name and relationship are required."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
     nome: str = Field(min_length=2, max_length=120)
+    relacao: str = Field(
+        min_length=1, max_length=40,
+        description="Grau de parentesco/relação com o paciente (ex.: Mãe, Pai).",
+    )
     cpf: str | None = Field(default=None, min_length=11, max_length=14)
-    telefone: str = Field(min_length=8, max_length=20)
-    email: str = Field(max_length=254)
+    telefone: str | None = Field(default=None, max_length=20)
+    email: str | None = Field(default=None, max_length=254)
 
 
 class PatientCreateRequest(BaseModel):
@@ -27,10 +30,10 @@ class PatientCreateRequest(BaseModel):
     cpf: str | None = Field(default=None, min_length=11, max_length=14)
     data_nascimento: date
     sexo: str = Field(pattern="^(M|F|I)$")
-    etnia: str
-    uf_nascimento: str = Field(min_length=2, max_length=2)
-    municipio_residencia: str = Field(min_length=2, max_length=120)
-    uf_residencia: str = Field(min_length=2, max_length=2)
+    etnia: str | None = None
+    uf_nascimento: str | None = Field(default=None, max_length=2)
+    municipio_residencia: str | None = Field(default=None, max_length=120)
+    uf_residencia: str | None = Field(default=None, max_length=2)
     prematuro: bool = False
     idade_gestacional_semanas: int | None = None
     peso_nascimento_gramas: float | None = None
@@ -39,8 +42,7 @@ class PatientCreateRequest(BaseModel):
     tem_diagnostico_tdah: bool = False
     outras_comorbidades: str | None = None
     medicamentos_uso: str | None = None
-    grau_parentesco: str | None = None
-    diagnostico_confirmado_fxs: bool | None = None
+    diagnostico_confirmado_fxs: bool = False
     acompanhante: AcompanhanteCreateRequest | None = None
 
 
@@ -49,22 +51,33 @@ class PatientResponse(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    id: UUID
-    db_id: int = Field(description="ID serial (BIGSERIAL) do paciente no banco")
-    nome_masked: str = Field(description="Nome com últimas letras mascaradas")
+    id: int = Field(description="ID (SERIAL) do paciente no banco")
+    nome_masked: str = Field(description="Nome com sobrenomes mascarados")
     sexo: str
-    etnia: str
-    uf_residencia: str
+    etnia: str | None = None
+    uf_residencia: str | None = None
     criado_por_db_id: int
 
 
 class PatientListItemSchema(BaseModel):
+    """One patient row for the list view. PII masked; clinical summary included."""
+
     model_config = ConfigDict(extra="forbid")
 
     id: int
-    nome: str
+    nome: str = Field(description="Nome mascarado")
     sexo: str | None = None
     data_nascimento: str | None = None
+    cpf_masked: str | None = Field(
+        default=None, description="Placeholder mascarado (só o hash existe no banco)"
+    )
+    telefone: str | None = Field(default=None, description="Telefone do acompanhante")
+    tem_acompanhante: bool = Field(default=False, description="Há acompanhante vinculado ao paciente")
+    ultimo_score: float | None = Field(default=None, description="Score da última avaliação finalizada")
+    ultima_avaliacao: str | None = Field(default=None, description="Data da última avaliação (YYYY-MM-DD)")
+    recomenda_exame: bool | None = Field(
+        default=None, description="Status de risco: TRUE = encaminhar para exame"
+    )
 
 
 class PatientListResponse(BaseModel):

@@ -21,8 +21,9 @@ function ModalAgendamento({ onClose, onSalvar }) {
   const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    db.from('tb_pacientes').select('id, nome_criptografado').eq('ativo', true).order('id', { ascending: false })
-      .then(({ data }) => setPacientes((data || []).map((p) => ({ id: p.id, nome: decodeNome(p.nome_criptografado) }))));
+    api.getPacientes({ limit: 200 })
+      .then((data) => setPacientes((data.items || []).map((p) => ({ id: p.id, nome: p.nome }))))
+      .catch((err) => console.error('Erro ao carregar pacientes:', err));
   }, []);
 
   function escolherPaciente(id) {
@@ -124,28 +125,32 @@ function AgendaPage({ usuario }) {
 
   async function carregar() {
     setLoading(true);
-    const { data, error } = await db
-      .from('tb_agendamentos')
-      .select('id, titulo, tipo, data_hora, status')
-      .neq('status', 'cancelado')
-      .order('data_hora', { ascending: true });
-    if (error) console.error('Erro ao carregar agenda:', error);
-    setAgendamentos(data || []);
-    setLoading(false);
+    try {
+      const data = await api.getAgendamentos();
+      setAgendamentos(data || []);
+    } catch (err) {
+      console.error('Erro ao carregar agenda:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { carregar(); }, []);
 
   async function salvarAgendamento(form) {
-    const { error } = await db.from('tb_agendamentos').insert({
-      titulo: form.titulo.trim(),
-      tipo: form.tipo,
-      data_hora: `${form.data}T${form.hora}:00`,
-      status: form.status,
-      paciente_id: form.pacienteId || null,
-      usuario_id: usuario?.id ?? null,
-    });
-    if (error) { console.error('Erro ao agendar:', error); return; }
+    try {
+      await api.createAgendamento({
+        titulo: form.titulo.trim(),
+        tipo: form.tipo,
+        data_hora: `${form.data}T${form.hora}:00`,
+        status: form.status,
+        paciente_id: form.pacienteId ? Number(form.pacienteId) : null,
+      });
+    } catch (err) {
+      console.error('Erro ao agendar:', err);
+      alert('Não foi possível criar o agendamento: ' + (err.message || 'erro desconhecido'));
+      return;
+    }
     setModal(false);
     carregar();
   }

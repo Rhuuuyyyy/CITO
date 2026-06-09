@@ -2,7 +2,8 @@
 // APP SHELL
 // ═══════════════════════════════════════════════════════════════════════
 function App() {
-  const [usuario, setUsuario]         = useState(null);
+  // Restore an existing session (JWT in sessionStorage) on reload.
+  const [usuario, setUsuario]         = useState(() => (api.getToken() ? api.getUser() : null));
   const [page, setPage]               = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme]             = useState(() => {
@@ -15,12 +16,20 @@ function App() {
     try { localStorage.setItem('cito-theme', theme); } catch (e) {}
   }, [theme]);
 
+  // Session expiry (401 from any API call): bounce back to the login screen.
+  useEffect(() => {
+    api.onUnauthorized = () => {
+      setUsuario(null);
+      setSidebarOpen(false);
+      setPage('dashboard');
+    };
+    return () => { api.onUnauthorized = null; };
+  }, []);
+
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light');
 
   async function logout() {
-    if (usuario?.sessao_id) {
-      await db.rpc('fn_logout', { p_sessao_id: usuario.sessao_id });
-    }
+    await api.logout(usuario?.sessao_id);
     setUsuario(null);
     setPage('dashboard');
     setSidebarOpen(false);

@@ -10,15 +10,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 @dataclass(frozen=True)
 class DashboardRow:
-    """One aggregated row from the anonymised dashboard view."""
+    """One aggregated row from the anonymised dashboard view.
 
-    uf_residencia: str | None
+    Columns mirror vw_dashboard_anonimizado (per docs/database_report.md §4.4).
+    """
+
+    sintoma: str | None
     sexo: str | None
-    faixa_etaria: str | None
+    idade_anos: int | None
     etnia: str | None
+    uf_residencia: str | None
     total_avaliacoes: int
-    media_score: float | None
-    taxa_recomendacao_exame: float | None
+    total_presentes: int | None
+    prevalencia_pct: float | None
+    versao_parametro: str | None
 
 
 @dataclass(frozen=True)
@@ -60,8 +65,9 @@ class DashboardRepository:
         result = await self._session.execute(
             text(
                 f"""
-                SELECT uf_residencia, sexo, faixa_etaria, etnia,
-                       total_avaliacoes, media_score, taxa_recomendacao_exame
+                SELECT sintoma, sexo, idade_anos, etnia, uf_residencia,
+                       total_avaliacoes, total_presentes, prevalencia_pct,
+                       versao_parametro
                 FROM   vw_dashboard_anonimizado
                 {where_clause}
                 ORDER  BY total_avaliacoes DESC
@@ -72,15 +78,15 @@ class DashboardRepository:
         rows = result.mappings().all()
         return [
             DashboardRow(
-                uf_residencia=cast("str | None", r["uf_residencia"]),
+                sintoma=cast("str | None", r["sintoma"]),
                 sexo=cast("str | None", r["sexo"]),
-                faixa_etaria=cast("str | None", r["faixa_etaria"]),
+                idade_anos=cast("int | None", r["idade_anos"]),
                 etnia=cast("str | None", r["etnia"]),
+                uf_residencia=cast("str | None", r["uf_residencia"]),
                 total_avaliacoes=cast(int, r["total_avaliacoes"]),
-                media_score=cast("float | None", r["media_score"]),
-                taxa_recomendacao_exame=cast(
-                    "float | None", r["taxa_recomendacao_exame"]
-                ),
+                total_presentes=cast("int | None", r["total_presentes"]),
+                prevalencia_pct=cast("float | None", r["prevalencia_pct"]),
+                versao_parametro=cast("str | None", r["versao_parametro"]),
             )
             for r in rows
         ]
