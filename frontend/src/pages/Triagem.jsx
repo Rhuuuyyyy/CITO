@@ -7,12 +7,6 @@ function formatarData(str) {
   const [y, m, d] = str.split('-');
   return `${d}/${m}/${y}`;
 }
-function fmtCpf(v) {
-  return (v || '').replace(/\D/g, '').slice(0, 11)
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d)/, '$1.$2')
-    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-}
 function calcIdade(dataNasc) {
   if (!dataNasc) return '—';
   const [y, m, d] = dataNasc.split('-').map(Number);
@@ -286,7 +280,6 @@ function TriagemPage({ onNav, usuario }) {
     descricao_outros: '',
   });
 
-  const [modoPaciente, setModoPaciente] = useState('existente');
   const [pacienteId, setPacienteId]     = useState(null);
   const [pacientesDb, setPacientesDb]   = useState([]);
   const [acompsDb, setAcompsDb]         = useState([]);
@@ -305,6 +298,10 @@ function TriagemPage({ onNav, usuario }) {
     api.getPacientes({ limit: 200 }).then((data) => {
       setPacientesDb(data.items || []);
     }).catch((err) => console.error('Erro ao carregar pacientes:', err));
+
+    api.getAcompanhantes().then((data) => {
+      setAcompsDb(data || []);
+    }).catch((err) => console.error('Erro ao carregar acompanhantes:', err));
   }, []);
 
   // Itens para autocomplete de paciente (nome já vem mascarado da API)
@@ -319,7 +316,7 @@ function TriagemPage({ onNav, usuario }) {
   const acompsItems = acompsDb.map(a => ({
     id: a.id,
     label: a.nome || '',
-    sub: a.relacao || '',
+    sub: a.telefone || '',
     raw: a,
   }));
 
@@ -332,11 +329,6 @@ function TriagemPage({ onNav, usuario }) {
       sexo: p.sexo || '',
       cpf: '',
     });
-    // A API não expõe a lista de acompanhantes do paciente — apenas o telefone
-    // do acompanhante aparece no item da lista. O acompanhante só é persistido
-    // no cadastro de paciente novo; em avaliações de paciente já existente ele
-    // não é reenviado, então a busca de acompanhante fica indisponível aqui.
-    setAcompsDb([]);
     setAcomp({ nome: '', relacao: '', telefone: p.telefone || '', email: '' });
     setErrors({});
   }
@@ -356,7 +348,6 @@ function TriagemPage({ onNav, usuario }) {
     setPacienteId(null);
     setPaciente({ nome: '', dataNasc: '', sexo: '', cpf: '' });
     setAcomp({ nome: '', relacao: '', telefone: '', email: '' });
-    setAcompsDb([]);
     setErrors({});
   }
 
@@ -377,21 +368,8 @@ function TriagemPage({ onNav, usuario }) {
   // ── Validação ──
   function validar(s) {
     const e = {};
-    if (s === 0) {
-      if (modoPaciente === 'existente' && !pacienteId)
-        e.selecao = 'Selecione um paciente cadastrado ou troque para "Novo paciente".';
-      if (modoPaciente === 'novo') {
-        if (!paciente.nome.trim()) e.nome = 'Nome é obrigatório.';
-        if (!paciente.dataNasc)    e.dataNasc = 'Data é obrigatória.';
-        if (!paciente.sexo)        e.sexo = 'Sexo é obrigatório.';
-        if ((paciente.cpf || '').replace(/\D/g, '').length !== 11) e.cpf = 'CPF deve ter 11 dígitos.';
-      }
-    }
-    if (s === 1 && modoPaciente === 'novo') {
-      // Acompanhante só é persistido ao cadastrar um paciente NOVO.
-      if (!acomp.nome.trim())    e.nomeAcomp    = 'Nome é obrigatório.';
-      if (!acomp.relacao.trim()) e.relacaoAcomp = 'Relação é obrigatória.';
-    }
+    if (s === 0 && !pacienteId)
+      e.selecao = 'Selecione um paciente cadastrado.';
     if (s === 2) {
       const np = sintomasFiltrados.filter((x) => respostas[x.id] === null);
       if (np.length > 0) e.questionario = `${np.length} pergunta(s) não respondida(s).`;
@@ -417,23 +395,10 @@ function TriagemPage({ onNav, usuario }) {
     if (!usuario?.id || !usuario?.sessao_id) return false;
     setSalvando(true);
     try {
-      let idPaciente = pacienteId;
-
-      // Paciente novo: cadastra (com acompanhante) antes de submeter a avaliação.
+      const idPaciente = pacienteId;
       if (!idPaciente) {
-        const novo = await api.createPaciente({
-          nome: paciente.nome,
-          cpf: (paciente.cpf || '').replace(/\D/g, '') || null,
-          data_nascimento: paciente.dataNasc,
-          sexo: paciente.sexo,
-          acompanhante: {
-            nome: acomp.nome,
-            relacao: acomp.relacao,
-            telefone: acomp.telefone || null,
-            email: acomp.email || null,
-          },
-        });
-        idPaciente = novo.id;
+        alert('Selecione um paciente cadastrado antes de gerar o laudo.');
+        return false;
       }
 
       const respostasArr = sintomasFiltrados
@@ -583,9 +548,8 @@ function TriagemPage({ onNav, usuario }) {
 
     y += 2;
     secHeader('Dados do acompanhante');
-    campoGrid([['Nome', acomp.nome], ['Relação com o paciente', acomp.relacao]]);
-    if (acomp.telefone || acomp.email)
-      campoGrid([['Telefone', acomp.telefone || '—'], ['E-mail', acomp.email || '—']]);
+    campoGrid([['Nome', acomp.nome || '—'], ['Telefone', acomp.telefone || '—']]);
+    if (acomp.email) campoGrid([['E-mail', acomp.email]]);
 
     y += 2;
     secHeader('Resultado do escore');
@@ -728,82 +692,30 @@ function TriagemPage({ onNav, usuario }) {
         <Card className="p-6 sm:p-8">
           <h2 className="font-display text-[26px] leading-none mb-1">Dados do paciente</h2>
           <p className="text-[13px] mb-6" style={{ color: 'var(--muted)' }}>
-            Busque um paciente cadastrado ou cadastre um novo.
+            Busque um paciente já cadastrado.
           </p>
 
-          {/* Toggle modo */}
-          <div className="grid grid-cols-2 gap-2 mb-6">
-            {[['existente', 'Buscar cadastrado'], ['novo', 'Novo paciente']].map(([v, lab]) => (
-              <button key={v} type="button"
-                onClick={() => { setModoPaciente(v); limparPaciente(); }}
-                className="py-3 rounded-2xl text-[13px] font-medium lift"
-                style={{
-                  background: modoPaciente === v ? 'var(--ink)' : 'var(--surface)',
-                  color: modoPaciente === v ? 'var(--on-ink)' : 'var(--ink-2)',
-                  border: modoPaciente === v ? '1px solid var(--ink)' : '1px solid var(--hair)',
-                }}>{lab}</button>
-            ))}
-          </div>
+          <Field label="Buscar paciente" required>
+            <SearchAutocomplete
+              placeholder="Digite o nome do paciente…"
+              items={pacientesItems}
+              value=""
+              onSelect={selecionarPaciente}
+              onClear={limparPaciente}
+              error={errors.selecao}
+            />
+          </Field>
 
-          {/* BUSCA */}
-          {modoPaciente === 'existente' && (
-            <>
-              <Field label="Buscar paciente" required>
-                <SearchAutocomplete
-                  placeholder="Digite o nome do paciente…"
-                  items={pacientesItems}
-                  value=""
-                  onSelect={selecionarPaciente}
-                  onClear={limparPaciente}
-                  error={errors.selecao}
-                />
-              </Field>
-
-              {pacienteId && (
-                <div className="mt-4 rounded-2xl px-5 py-4"
-                  style={{ background: 'var(--paper-2)', border: '1px solid var(--hair-soft)' }}>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
-                    <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Nome</span><p>{paciente.nome}</p></div>
-                    <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Sexo</span><p>{paciente.sexo === 'M' ? 'Masculino' : 'Feminino'}</p></div>
-                    <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Nascimento</span><p className="font-mono">{formatarData(paciente.dataNasc)}</p></div>
-                    <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Idade</span><p>{calcIdade(paciente.dataNasc)}</p></div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* NOVO PACIENTE */}
-          {modoPaciente === 'novo' && (
-            <>
-              <Field label="Nome completo" required error={errors.nome}>
-                <input className={inputCls} style={inputStyle} type="text" placeholder="Nome do paciente"
-                  value={paciente.nome} onChange={(e) => setPaciente({ ...paciente, nome: e.target.value })} />
-              </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Data de nascimento" required error={errors.dataNasc}>
-                  <input className={inputCls} style={inputStyle} type="date"
-                    value={paciente.dataNasc} onChange={(e) => setPaciente({ ...paciente, dataNasc: e.target.value })} />
-                </Field>
-                <Field label="Sexo biológico" required error={errors.sexo}>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[['M','Masculino'], ['F','Feminino']].map(([v, lab]) => (
-                      <button key={v} onClick={() => setPaciente({ ...paciente, sexo: v })}
-                        className="py-3 rounded-2xl text-[13px] font-medium lift"
-                        style={{
-                          background: paciente.sexo === v ? 'var(--ink)' : 'var(--surface)',
-                          color: paciente.sexo === v ? 'var(--on-ink)' : 'var(--ink-2)',
-                          border: paciente.sexo === v ? '1px solid var(--ink)' : '1px solid var(--hair)',
-                        }}>{lab}</button>
-                    ))}
-                  </div>
-                </Field>
+          {pacienteId && (
+            <div className="mt-4 rounded-2xl px-5 py-4"
+              style={{ background: 'var(--paper-2)', border: '1px solid var(--hair-soft)' }}>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+                <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Nome</span><p>{paciente.nome}</p></div>
+                <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Sexo</span><p>{paciente.sexo === 'M' ? 'Masculino' : 'Feminino'}</p></div>
+                <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Nascimento</span><p className="font-mono">{formatarData(paciente.dataNasc)}</p></div>
+                <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Idade</span><p>{calcIdade(paciente.dataNasc)}</p></div>
               </div>
-              <Field label="CPF" required error={errors.cpf}>
-                <input className={`${inputCls} font-mono`} style={inputStyle} type="text" placeholder="000.000.000-00"
-                  value={paciente.cpf || ''} onChange={(e) => setPaciente({ ...paciente, cpf: fmtCpf(e.target.value) })} />
-              </Field>
-            </>
+            </div>
           )}
         </Card>
       )}
@@ -811,61 +723,31 @@ function TriagemPage({ onNav, usuario }) {
       {/* ── STEP 1 — ACOMPANHANTE ── */}
       {step === 1 && (
         <Card className="p-6 sm:p-8">
-          <h2 className="font-display text-[26px] leading-none mb-1">Dados do acompanhante</h2>
+          <h2 className="font-display text-[26px] leading-none mb-1">Acompanhante</h2>
           <p className="text-[13px] mb-6" style={{ color: 'var(--muted)' }}>
-            Busque um acompanhante já vinculado a este paciente ou informe um novo.
+            Selecione o acompanhante que está com o paciente (opcional).
           </p>
 
-          {/* Busca de acompanhante se houver cadastrados */}
-          {acompsDb.length > 0 && (
-            <div className="mb-5">
-              <Field label="Buscar acompanhante cadastrado">
-                <SearchAutocomplete
-                  placeholder="Digite o nome do acompanhante…"
-                  items={acompsItems}
-                  value=""
-                  onSelect={selecionarAcomp}
-                  onClear={() => setAcomp({ nome: '', relacao: '', telefone: '', email: '' })}
-                />
-              </Field>
-              <div className="flex items-center gap-3 my-3">
-                <div className="flex-1 h-px" style={{ background: 'var(--hair)' }} />
-                <span className="text-[11.5px]" style={{ color: 'var(--subtle)' }}>ou informe manualmente</span>
-                <div className="flex-1 h-px" style={{ background: 'var(--hair)' }} />
+          <Field label="Buscar acompanhante cadastrado">
+            <SearchAutocomplete
+              placeholder="Digite o nome do acompanhante…"
+              items={acompsItems}
+              value=""
+              onSelect={selecionarAcomp}
+              onClear={() => setAcomp({ nome: '', relacao: '', telefone: '', email: '' })}
+            />
+          </Field>
+
+          {acomp.nome && (
+            <div className="mt-4 rounded-2xl px-5 py-4"
+              style={{ background: 'var(--paper-2)', border: '1px solid var(--hair-soft)' }}>
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+                <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Nome</span><p>{acomp.nome}</p></div>
+                {acomp.telefone && <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Telefone</span><p className="font-mono">{acomp.telefone}</p></div>}
+                {acomp.email && <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>E-mail</span><p>{acomp.email}</p></div>}
               </div>
             </div>
           )}
-
-          <Field label="Nome completo" required error={errors.nomeAcomp}>
-            <input className={inputCls} style={inputStyle} type="text" placeholder="Nome do acompanhante"
-              value={acomp.nome} onChange={(e) => setAcomp({ ...acomp, nome: e.target.value })} />
-          </Field>
-
-          <Field label="Relação com o paciente" required error={errors.relacaoAcomp}>
-            <div className="flex flex-wrap gap-2">
-              {['Mãe','Pai','Avó / Avô','Tio / Tia','Irmão / Irmã','Cuidador(a)','Outro'].map(r => (
-                <button key={r} onClick={() => setAcomp({ ...acomp, relacao: r })}
-                  className="px-3 py-1.5 rounded-full text-[12.5px] font-medium lift"
-                  style={{
-                    background: acomp.relacao === r ? 'var(--ink)' : 'var(--surface)',
-                    color: acomp.relacao === r ? 'var(--on-ink)' : 'var(--ink-2)',
-                    border: acomp.relacao === r ? '1px solid var(--ink)' : '1px solid var(--hair)',
-                  }}>{r}</button>
-              ))}
-            </div>
-            {errors.relacaoAcomp && <p className="text-[12px] mt-1.5" style={{ color: 'var(--rust)' }}>{errors.relacaoAcomp}</p>}
-          </Field>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Telefone">
-              <input className={inputCls} style={inputStyle} type="tel" placeholder="(00) 9 0000-0000"
-                value={acomp.telefone} onChange={(e) => setAcomp({ ...acomp, telefone: e.target.value })} />
-            </Field>
-            <Field label="E-mail">
-              <input className={inputCls} style={inputStyle} type="email" placeholder="email@exemplo.com"
-                value={acomp.email} onChange={(e) => setAcomp({ ...acomp, email: e.target.value })} />
-            </Field>
-          </div>
 
           {/* Resumo paciente */}
           <div className="mt-4 rounded-2xl px-5 py-4 flex items-center gap-3"
@@ -1009,8 +891,7 @@ function TriagemPage({ onNav, usuario }) {
           <Card className="p-6">
             <h3 className="text-[10.5px] font-medium uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--muted)' }}>Acompanhante</h3>
             <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
-              <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Nome</span><p>{acomp.nome}</p></div>
-              <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Relação</span><p>{acomp.relacao}</p></div>
+              <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Nome</span><p>{acomp.nome || '—'}</p></div>
               {acomp.telefone && <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Telefone</span><p className="font-mono">{acomp.telefone}</p></div>}
               {acomp.email    && <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>E-mail</span><p>{acomp.email}</p></div>}
             </div>

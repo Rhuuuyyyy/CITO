@@ -56,7 +56,7 @@ class PatientRepository:
             {
                 "nome": patient.full_name,
                 "cpf_hash": patient.cpf.sha256_hex if patient.cpf else None,
-                "data_nascimento": patient.birth_date.isoformat(),
+                "data_nascimento": patient.birth_date,
                 "sexo": patient.sex_at_birth.value,
                 "criado_por": patient.criado_por_db_id,
                 "etnia": patient.etnia.value if patient.etnia else None,

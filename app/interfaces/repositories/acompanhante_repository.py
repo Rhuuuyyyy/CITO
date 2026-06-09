@@ -3,11 +3,21 @@
 The view's INSTEAD OF trigger encrypts ``nome`` into ``nome_criptografado``;
 the application always works with clear text. The ``id`` is a DB SERIAL.
 """
+from dataclasses import dataclass
+
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.entities.acompanhante import Acompanhante
 from app.domain.value_objects.cpf import CPF
+
+
+@dataclass(frozen=True)
+class AcompanhanteListItem:
+    id: int
+    nome: str
+    telefone: str | None
+    email: str | None
 
 
 class AcompanhanteRepository:
@@ -37,6 +47,20 @@ class AcompanhanteRepository:
                 "Falha ao inserir acompanhante — RETURNING id não retornou valor"
             )
         return acompanhante.model_copy(update={"id": int(row["id"])})
+
+    async def list_all(self) -> list[AcompanhanteListItem]:
+        result = await self._session.execute(
+            text("SELECT id, nome, telefone, email FROM acompanhantes ORDER BY nome")
+        )
+        return [
+            AcompanhanteListItem(
+                id=int(row["id"]),
+                nome=str(row["nome"]) if row["nome"] else "",
+                telefone=row["telefone"],
+                email=row["email"],
+            )
+            for row in result.mappings().all()
+        ]
 
     async def get_by_id(self, entity_id: int) -> Acompanhante | None:
         result = await self._session.execute(

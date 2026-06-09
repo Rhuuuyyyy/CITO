@@ -10,7 +10,6 @@ from app.application.use_cases.get_relatorio_avaliacoes import (
 from app.db.database import get_db_session
 from app.interfaces.api.dependencies import AuthenticatedDoctor, get_current_doctor
 from app.interfaces.repositories.relatorio_repository import RelatorioRepository
-from app.presentation.api.v1.masking import mask_name
 from app.presentation.api.v1.schemas.relatorio import RelatorioAvaliacaoSchema
 
 router = APIRouter(prefix="/relatorios", tags=["Relatórios"])
@@ -32,7 +31,7 @@ async def list_relatorio_avaliacoes(
             data_avaliacao=i.data_avaliacao,
             score_final=i.score_final,
             sexo=i.sexo,
-            nome_masked=mask_name(i.nome),
+            nome_masked=i.nome,
         )
         for i in items
     ]

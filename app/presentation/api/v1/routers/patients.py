@@ -11,7 +11,7 @@ from app.interfaces.api.dependencies import AuthenticatedDoctor, get_current_doc
 from app.interfaces.repositories.acompanhante_repository import AcompanhanteRepository
 from app.interfaces.repositories.patient_read_repository import PatientReadRepository
 from app.interfaces.repositories.patient_repository import PatientRepository
-from app.presentation.api.v1.masking import CPF_MASK, mask_name
+from app.presentation.api.v1.masking import CPF_MASK
 from app.presentation.api.v1.schemas.patient import (
     PatientCreateRequest,
     PatientListItemSchema,
@@ -57,7 +57,7 @@ async def register_patient(
 
     return PatientResponse(
         id=patient.id,
-        nome_masked=mask_name(patient.full_name),
+        nome_masked=patient.full_name,
         sexo=patient.sex_at_birth.value,
         etnia=patient.etnia.value if patient.etnia else None,
         uf_residencia=patient.uf_residencia,
@@ -90,7 +90,7 @@ async def list_patients(
         items=[
             PatientListItemSchema(
                 id=item.id,
-                nome=mask_name(item.nome),
+                nome=item.nome,
                 sexo=item.sexo,
                 data_nascimento=item.data_nascimento,
                 cpf_masked=CPF_MASK if item.cpf_hash else None,
