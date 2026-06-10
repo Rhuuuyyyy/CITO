@@ -378,18 +378,33 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
   );
 }
 
+const ProntInfo = ({ label, valor }) => (
+  <div>
+    <span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>{label}</span>
+    <p>{valor}</p>
+  </div>
+);
+
 function ModalProntuario({ paciente, onClose }) {
+  const [detalhe, setDetalhe] = useState(null);
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.getHistorico(paciente.id)
-      .then((data) => { setAvaliacoes(data.items || []); })
-      .catch((err) => { console.error('Erro ao carregar prontuário:', err); })
-      .finally(() => setLoading(false));
+    Promise.all([
+      api.getPacienteDetalhe(paciente.id).catch((err) => { console.error('Erro ao carregar detalhe:', err); return null; }),
+      api.getHistorico(paciente.id).then((d) => d.items || []).catch((err) => { console.error('Erro ao carregar histórico:', err); return []; }),
+    ]).then(([det, hist]) => {
+      setDetalhe(det);
+      setAvaliacoes(hist);
+      setLoading(false);
+    });
   }, [paciente.id]);
 
   const limiar = paciente.sexo === 'M' ? 0.56 : 0.55;
+  const fmtData = (s) => (s ? s.split('-').reverse().join('/') : '—');
+  const labelDe = (lista, v) => (lista.find(([val]) => val === v) || [null, v])[1] || '—';
+  const simNao = (b) => (b ? 'Sim' : 'Não');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 anim-fade-in"
@@ -404,7 +419,7 @@ function ModalProntuario({ paciente, onClose }) {
           <div>
             <h2 className="font-display text-[26px] leading-none">{paciente.nome}</h2>
             <p className="text-[12.5px] mt-1" style={{ color: 'var(--muted)' }}>
-              Histórico de triagens · {paciente.sexo === 'M' ? 'Masculino' : 'Feminino'}
+              Prontuário · {paciente.sexo === 'M' ? 'Masculino' : 'Feminino'}
             </p>
           </div>
           <button onClick={onClose}
@@ -416,47 +431,94 @@ function ModalProntuario({ paciente, onClose }) {
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-7 py-6">
+        <div className="flex-1 overflow-y-auto px-7 py-6 space-y-6">
           {loading && (
             <p className="text-[13px]" style={{ color: 'var(--muted)' }}>Carregando…</p>
           )}
-          {!loading && avaliacoes.length === 0 && (
-            <p className="text-[13px]" style={{ color: 'var(--muted)' }}>
-              Nenhuma triagem registrada para este paciente.
-            </p>
+
+          {!loading && detalhe && (
+            <>
+              <div>
+                <h3 className="text-[10.5px] font-medium uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--muted)' }}>Dados do paciente</h3>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+                  <ProntInfo label="Sexo" valor={detalhe.sexo === 'M' ? 'Masculino' : 'Feminino'} />
+                  <ProntInfo label="Nascimento" valor={fmtData(detalhe.data_nascimento)} />
+                  <ProntInfo label="Idade" valor={detalhe.idade_anos != null ? `${detalhe.idade_anos} anos` : '—'} />
+                  <ProntInfo label="CPF" valor={detalhe.cpf_masked || '—'} />
+                  <ProntInfo label="Etnia" valor={detalhe.etnia ? labelDe(ETNIAS, detalhe.etnia) : '—'} />
+                  <ProntInfo label="Escolaridade" valor={detalhe.escolaridade ? labelDe(ESCOLARIDADES, detalhe.escolaridade) : '—'} />
+                  <ProntInfo label="UF de residência" valor={detalhe.uf_residencia || '—'} />
+                  <ProntInfo label="Prematuro" valor={simNao(detalhe.prematuro)} />
+                  <ProntInfo label="Diagnóstico de autismo" valor={simNao(detalhe.tem_diagnostico_autismo)} />
+                  <ProntInfo label="Diagnóstico de TDAH" valor={simNao(detalhe.tem_diagnostico_tdah)} />
+                  <ProntInfo label="FXS confirmado" valor={simNao(detalhe.diagnostico_confirmado_fxs)} />
+                </div>
+                {(detalhe.outras_comorbidades || detalhe.medicamentos_uso) && (
+                  <div className="space-y-3 mt-3 text-[13px]">
+                    {detalhe.outras_comorbidades && <ProntInfo label="Outras comorbidades" valor={detalhe.outras_comorbidades} />}
+                    {detalhe.medicamentos_uso && <ProntInfo label="Medicamentos em uso" valor={detalhe.medicamentos_uso} />}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h3 className="text-[10.5px] font-medium uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--muted)' }}>
+                  {detalhe.acompanhantes.length > 1 ? 'Acompanhantes' : 'Acompanhante'}
+                </h3>
+                {detalhe.acompanhantes.length === 0 && (
+                  <p className="text-[13px]" style={{ color: 'var(--subtle)' }}>Nenhum acompanhante vinculado.</p>
+                )}
+                <div className="space-y-3">
+                  {detalhe.acompanhantes.map((a) => (
+                    <div key={a.id} className="rounded-2xl p-4"
+                      style={{ border: '1px solid var(--hair)', background: 'var(--paper-2)' }}>
+                      <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
+                        <ProntInfo label="Nome" valor={a.nome} />
+                        <ProntInfo label="Relação" valor={a.relacao || '—'} />
+                        {a.telefone && <ProntInfo label="Telefone" valor={a.telefone} />}
+                        {a.email && <ProntInfo label="E-mail" valor={a.email} />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
           )}
 
-          <div className="space-y-3">
-            {avaliacoes.map((a) => {
-              const score = a.score_final != null ? Number(a.score_final) : null;
-              const encaminha = !!a.recomenda_exame;
-              return (
-                <div key={a.avaliacao_id} className="rounded-2xl p-5"
-                  style={{ border: '1px solid var(--hair)', background: 'var(--paper-2)' }}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[12.5px] font-mono" style={{ color: 'var(--muted)' }}>
-                      {new Date(a.data_avaliacao).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <Pill tone={encaminha ? 'honey' : 'sage'}>
-                      {encaminha ? 'Encaminhar' : 'Baixo risco'}
-                    </Pill>
-                  </div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-display text-[28px] num-tabular leading-none">
-                      {score != null ? score.toFixed(2) : '—'}
-                    </span>
-                    <span className="text-[11.5px]" style={{ color: 'var(--muted)' }}>
-                      limiar {paciente.sexo === 'M' ? '♂' : '♀'} {limiar}
-                    </span>
-                  </div>
-                  {encaminha && (
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      <Pill tone="honey">exame_fmr1 · auto</Pill>
+          <div>
+            <h3 className="text-[10.5px] font-medium uppercase tracking-[0.16em] mb-3" style={{ color: 'var(--muted)' }}>Histórico de triagens</h3>
+            {!loading && avaliacoes.length === 0 && (
+              <p className="text-[13px]" style={{ color: 'var(--muted)' }}>
+                Nenhuma triagem registrada para este paciente.
+              </p>
+            )}
+            <div className="space-y-3">
+              {avaliacoes.map((a) => {
+                const score = a.score_final != null ? Number(a.score_final) : null;
+                const encaminha = !!a.recomenda_exame;
+                return (
+                  <div key={a.avaliacao_id} className="rounded-2xl p-5"
+                    style={{ border: '1px solid var(--hair)', background: 'var(--paper-2)' }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[12.5px] font-mono" style={{ color: 'var(--muted)' }}>
+                        {new Date(a.data_avaliacao).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <Pill tone={encaminha ? 'honey' : 'sage'}>
+                        {encaminha ? 'Encaminhar' : 'Baixo risco'}
+                      </Pill>
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                    <div className="flex items-baseline gap-2">
+                      <span className="font-display text-[28px] num-tabular leading-none">
+                        {score != null ? score.toFixed(2) : '—'}
+                      </span>
+                      <span className="text-[11.5px]" style={{ color: 'var(--muted)' }}>
+                        limiar {paciente.sexo === 'M' ? '♂' : '♀'} {limiar}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 

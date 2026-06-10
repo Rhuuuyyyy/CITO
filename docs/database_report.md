@@ -1,10 +1,12 @@
 # Documentação do Banco de Dados — SXF/CITO
 
 **Projeto Supabase:** `znrsznscbmtudbcueana`
-**Host:** `db.znrsznscbmtudbcueana.supabase.co`
-**Motor:** PostgreSQL 14.5 (Supabase)
+**Host (aplicação):** `aws-1-sa-east-1.pooler.supabase.com:5432` — session pooler IPv4 (o host direto `db.znrsznscbmtudbcueana.supabase.co` é IPv6-only)
+**Motor:** PostgreSQL 17.6 (Supabase)
 
 Esta é a documentação de referência do banco de dados do sistema CITO — plataforma de triagem para **Síndrome do X Frágil (FXS)**. Ela descreve o estado atual do banco: tabelas, relacionamentos, views, funções, métodos de criptografia e controle de acesso.
+
+> **Estado refletido:** pós-correções P0/P1 de 2026-06-09 — as views de leitura decifram o nome (`pgp_sym_decrypt`), a view `avaliacoes` expõe a coluna calculada `recomenda_exame`, e há triggers `INSTEAD OF INSERT` em `pacientes` e `acompanhantes`. Os scripts aplicados estão versionados em `scripts/sql/`.
 
 ---
 
@@ -27,8 +29,8 @@ O backend interage com o banco **exclusivamente pelas views** da camada lógica.
 ### Resumo de objetos
 | Tipo | Quantidade |
 |------|-----------|
-| Tabelas físicas | 13 |
-| Views | 5 |
+| Tabelas físicas | 14 |
+| Views (3 comuns + 1 materializada) | 4 |
 | Funções RPC expostas | 6 |
 | Funções internas (triggers + auxiliares) | 5+ |
 | Roles RBAC | 3 |
@@ -315,16 +317,21 @@ Trilha geral de mutações no sistema. Cada entrada guarda o estado anterior e o
 
 ## 4. Views — a camada lógica
 
-As views são a interface que o backend usa para ler e gravar dados. Elas escondem a criptografia: ao consultar uma view, os campos cifrados chegam já descriptografados; ao gravar, um trigger `INSTEAD OF` cifra os dados antes de escrevê-los na tabela física correspondente.
+As views escondem a criptografia: ao consultar `pacientes` ou `acompanhantes`, o nome chega já descriptografado. Nas duas views que guardam nome cifrado, um trigger `INSTEAD OF INSERT` cifra o dado antes de gravá-lo na tabela física correspondente. A view `avaliacoes` é **somente leitura** (expõe `recomenda_exame` calculado); a escrita de avaliações ocorre direto em `tb_avaliacoes`.
 
 ### 4.1 `acompanhantes`
-View sobre `tb_acompanhantes` que descriptografa o nome em leitura. O trigger `fn_acompanhantes_dml` intercepta INSERT/UPDATE/DELETE e cuida da cifragem na escrita.
+View sobre `tb_acompanhantes` que expõe a coluna `nome` já descriptografada — `pgp_sym_decrypt(nome_criptografado, current_setting('app.pgp_key'))` — além das colunas físicas. Na escrita, o trigger `trg_acompanhantes_insert` (`INSTEAD OF INSERT`, função `fn_acompanhantes_insert`) cifra o nome com `pgp_sym_encrypt` antes de gravar em `tb_acompanhantes` e devolve o `id` gerado.
 
 ### 4.2 `pacientes`
-View sobre `tb_pacientes` com JOIN em `tb_acompanhantes`. Entrega o nome do paciente e do acompanhante já descriptografados, a idade calculada (`idade_anos`) e todos os campos demográficos. O trigger `fn_pacientes_dml` trata a escrita.
+View sobre `tb_pacientes` com `LEFT JOIN` em `tb_acompanhantes`. Expõe a coluna `nome` do paciente já descriptografada (`pgp_sym_decrypt`), a idade calculada (`idade_anos`), todos os campos demográficos e os dados do acompanhante (`acompanhante_nome_criptografado`, `acompanhante_telefone`, `acompanhante_email`). Na escrita, o trigger `trg_pacientes_insert` (`INSTEAD OF INSERT`, função `fn_pacientes_insert`) cifra o nome e grava em `tb_pacientes`, devolvendo o `id`.
 
 ### 4.3 `avaliacoes`
-View sobre `tb_avaliacoes` que expõe o `score_final` e o estado da avaliação. O trigger `fn_avaliacoes_dml` trata a escrita.
+View **somente leitura** sobre `tb_avaliacoes`. Além das colunas físicas (`score_final`, `status`, etc.), expõe a coluna calculada **`recomenda_exame`** (BOOLEAN), que aplica a regra de decisão diretamente na consulta:
+- `NULL` quando `score_final` ainda é nulo (avaliação não finalizada);
+- `false` quando há diagnóstico prévio de FXS (`diagnostico_previo_fxs = true`);
+- caso contrário, `true` se `score_final >= limiar_score` do parâmetro ativo para o sexo do paciente (M 0.56 / F 0.55), senão `false`.
+
+Não há trigger de escrita nesta view: as avaliações são criadas/atualizadas em `tb_avaliacoes` e finalizadas por `fn_calcular_score_triagem`.
 
 ### 4.4 `vw_dashboard_anonimizado` (materializada)
 View destinada a relatórios e BI, sem nenhum dado pessoal. Contém apenas agregações por sintoma, sexo, faixa de idade, etnia e UF.
@@ -369,9 +376,8 @@ Executadas automaticamente pelo banco para manter consistência e aplicar a crip
 |--------|------|--------|
 | `fn_hash_senha_usuario()` | `usuarios` | BEFORE INSERT/UPDATE da senha — aplica bcrypt |
 | `fn_set_updated_at()` | Tabelas principais | BEFORE UPDATE — atualiza `atualizado_em` |
-| `fn_pacientes_dml()` | View `pacientes` | INSTEAD OF — cifra antes de gravar |
-| `fn_acompanhantes_dml()` | View `acompanhantes` | INSTEAD OF — cifra antes de gravar |
-| `fn_avaliacoes_dml()` | View `avaliacoes` | INSTEAD OF — trata a escrita |
+| `fn_pacientes_insert()` | View `pacientes` | INSTEAD OF INSERT — cifra o nome e grava em `tb_pacientes` |
+| `fn_acompanhantes_insert()` | View `acompanhantes` | INSTEAD OF INSERT — cifra o nome e grava em `tb_acompanhantes` |
 
 ---
 

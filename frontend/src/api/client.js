@@ -130,6 +130,7 @@ const api = {
     return this.get('/pacientes' + (q ? '?' + q : ''));
   },
   createPaciente(body) { return this.post('/pacientes', body); },
+  getPacienteDetalhe(id) { return this.get('/pacientes/' + id); },
   getHistorico(pacienteId) { return this.get('/pacientes/' + pacienteId + '/historico'); },
 
   createAvaliacao(body) { return this.post('/avaliacoes', body); },

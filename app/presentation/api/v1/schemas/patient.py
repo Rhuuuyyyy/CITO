@@ -87,3 +87,42 @@ class PatientListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class AcompanhanteDetailSchema(BaseModel):
+    """Caregiver linked to a patient. Name in clear for the owning doctor."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    nome: str
+    relacao: str | None = None
+    telefone: str | None = None
+    email: str | None = None
+
+
+class PatientDetailResponse(BaseModel):
+    """Full patient record for the detail view. Nome em claro (médico dono); CPF mascarado."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    id: int
+    nome: str
+    sexo: str | None = None
+    data_nascimento: str | None = None
+    idade_anos: int | None = None
+    cpf_masked: str | None = None
+    etnia: str | None = None
+    uf_nascimento: str | None = None
+    municipio_residencia: str | None = None
+    uf_residencia: str | None = None
+    prematuro: bool | None = None
+    idade_gestacional_semanas: int | None = None
+    peso_nascimento_gramas: int | None = None
+    escolaridade: str | None = None
+    tem_diagnostico_autismo: bool | None = None
+    tem_diagnostico_tdah: bool | None = None
+    outras_comorbidades: str | None = None
+    medicamentos_uso: str | None = None
+    diagnostico_confirmado_fxs: bool | None = None
+    acompanhantes: list[AcompanhanteDetailSchema]

@@ -4,6 +4,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.application.use_cases.get_patient_detail import GetPatientDetailUseCase
 from app.application.use_cases.get_patient_list import GetPatientListUseCase
 from app.application.use_cases.register_patient import RegisterPatientUseCase
 from app.db.database import get_db_session
@@ -13,7 +14,9 @@ from app.interfaces.repositories.patient_read_repository import PatientReadRepos
 from app.interfaces.repositories.patient_repository import PatientRepository
 from app.presentation.api.v1.masking import CPF_MASK
 from app.presentation.api.v1.schemas.patient import (
+    AcompanhanteDetailSchema,
     PatientCreateRequest,
+    PatientDetailResponse,
     PatientListItemSchema,
     PatientListResponse,
     PatientResponse,
@@ -105,4 +108,57 @@ async def list_patients(
         total=result.total,
         limit=result.limit,
         offset=result.offset,
+    )
+
+
+@router.get(
+    "/{paciente_id}",
+    response_model=PatientDetailResponse,
+    summary="Detalhe completo de um paciente",
+)
+async def get_patient_detail(
+    paciente_id: int,
+    doctor: AuthenticatedDoctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db_session),
+) -> PatientDetailResponse:
+    use_case = GetPatientDetailUseCase(patients=PatientReadRepository(session))
+    detail = await use_case.execute(
+        paciente_id=paciente_id,
+        usuario_id=doctor.usuario_id,
+    )
+    if detail is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Paciente não encontrado.",
+        )
+    return PatientDetailResponse(
+        id=detail.id,
+        nome=detail.nome,
+        sexo=detail.sexo,
+        data_nascimento=detail.data_nascimento,
+        idade_anos=detail.idade_anos,
+        cpf_masked=CPF_MASK if detail.cpf_hash else None,
+        etnia=detail.etnia,
+        uf_nascimento=detail.uf_nascimento,
+        municipio_residencia=detail.municipio_residencia,
+        uf_residencia=detail.uf_residencia,
+        prematuro=detail.prematuro,
+        idade_gestacional_semanas=detail.idade_gestacional_semanas,
+        peso_nascimento_gramas=detail.peso_nascimento_gramas,
+        escolaridade=detail.escolaridade,
+        tem_diagnostico_autismo=detail.tem_diagnostico_autismo,
+        tem_diagnostico_tdah=detail.tem_diagnostico_tdah,
+        outras_comorbidades=detail.outras_comorbidades,
+        medicamentos_uso=detail.medicamentos_uso,
+        diagnostico_confirmado_fxs=detail.diagnostico_confirmado_fxs,
+        acompanhantes=[
+            AcompanhanteDetailSchema(
+                id=a.id,
+                nome=a.nome,
+                relacao=a.relacao,
+                telefone=a.telefone,
+                email=a.email,
+            )
+            for a in detail.acompanhantes
+        ],
     )
