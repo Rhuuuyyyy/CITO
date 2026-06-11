@@ -197,6 +197,183 @@ function RelatoriosSection({ onBack }) {
   );
 }
 
+// ── Seção de parâmetros do escore ────────────────────────────────────
+function ParametrosEscoreSection({ onBack }) {
+  const PDF_URL = 'https://doi.org/10.1101/2025.10.21.25338500';
+
+  const sintomas = [
+    { label: 'Deficiência intelectual',       pesoM: 0.32, pesoF: 0.20 },
+    { label: 'Face alongada / orelhas',        pesoM: 0.29, pesoF: 0.09 },
+    { label: 'Macroorquidismo',                pesoM: 0.26, pesoF: null  },
+    { label: 'Hipermobilidade articular',      pesoM: 0.19, pesoF: 0.04 },
+    { label: 'Dificuldades de aprendizagem',   pesoM: 0.18, pesoF: 0.28 },
+    { label: 'Déficit de atenção',             pesoM: 0.17, pesoF: 0.12 },
+    { label: 'Movimentos repetitivos',         pesoM: 0.17, pesoF: 0.05 },
+    { label: 'Atraso na fala',                 pesoM: 0.14, pesoF: 0.01 },
+    { label: 'Hiperatividade',                 pesoM: 0.12, pesoF: 0.04 },
+    { label: 'Evita contato visual',           pesoM: 0.06, pesoF: 0.08 },
+    { label: 'Evita contato físico',           pesoM: 0.04, pesoF: 0.07 },
+    { label: 'Agressividade',                  pesoM: 0.01, pesoF: 0.02 },
+  ];
+
+  return (
+    <div className="anim-fade-in space-y-5">
+      {/* Voltar */}
+      <button onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-[13px] font-medium lift mb-1"
+        style={{ color: 'var(--muted)' }}
+        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--ink)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted)'; }}>
+        {Icon.chevronLeft} Voltar para configurações
+      </button>
+
+      {/* Cabeçalho */}
+      <div>
+        <h2 className="font-display text-[28px] leading-none">Parâmetros do escore</h2>
+        <p className="text-[13px] mt-1.5" style={{ color: 'var(--muted)' }}>
+          Pesos e limiares utilizados na triagem clínica para a Síndrome do X Frágil
+        </p>
+      </div>
+
+      {/* Card de referência — não clicável */}
+      <div className="rounded-3xl p-6 space-y-4"
+        style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
+
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <div className="text-[10px] font-mono uppercase tracking-[0.14em] mb-2"
+              style={{ color: 'var(--muted)' }}>Referência científica</div>
+            <h3 className="font-display text-[17px] leading-snug mb-1">
+              Síndrome do X Frágil no Brasil: Desenvolvimento e Validação de um Checklist Clínico para Triagem Populacional
+            </h3>
+            <p className="text-[12px] font-mono mt-1" style={{ color: 'var(--muted)' }}>
+              Romero LM, Santos GCC, Schubert V, Scalabrin EE, Herai RH · Instituto Buko Kaesemodel (IBK) / PUCPR · medRxiv, 2025
+            </p>
+          </div>
+          <button
+            onClick={() => window.open(PDF_URL, '_blank')}
+            className="flex-shrink-0 px-4 py-2 rounded-2xl text-[12.5px] font-medium lift"
+            style={{ border: '1px solid var(--hair)', color: 'var(--ink-2)', background: 'transparent' }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--ink)'; e.currentTarget.style.color = 'var(--ink)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--hair)'; e.currentTarget.style.color = 'var(--ink-2)'; }}>
+            Abrir artigo
+          </button>
+        </div>
+
+        <div style={{ borderTop: '1px solid var(--hair-soft)', paddingTop: '1rem' }}>
+          <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
+            Estudo de coorte com 419 indivíduos com mutação completa ou mosaicismo confirmados molecularmente no gene
+            <em> FMR1</em> (364 do sexo masculino, 55 do sexo feminino), provenientes do banco de dados do Instituto Buko Kaesemodel.
+            Foram avaliados 12 sinais físicos, cognitivos e comportamentais. Análises estatísticas combinadas com aprendizado de
+            máquina (Random Forest, K-means) identificaram as características mais discriminativas por sexo.
+          </p>
+          <p className="text-[13px] leading-relaxed mt-3" style={{ color: 'var(--ink-2)' }}>
+            O checklist pontuado, com pesos específicos por sexo, alcançou <strong>95% de sensibilidade</strong>, com áreas sob
+            a curva ROC de <strong>0,73 (masculino)</strong> e <strong>0,76 (feminino)</strong>. Os principais preditores
+            diferiram por sexo: deficiência intelectual e características faciais foram mais informativos no sexo masculino,
+            enquanto dificuldades de aprendizagem foram mais relevantes no sexo feminino.
+          </p>
+          <p className="text-[13px] leading-relaxed mt-3" style={{ color: 'var(--ink-2)' }}>
+            Esta é a maior coorte de SXF analisada no Brasil. O checklist validado representa uma ferramenta prática e de baixo
+            custo para apoiar o diagnóstico precoce e orientar estratégias de saúde pública, reduzindo testes moleculares
+            desnecessários ao priorizar os casos de maior risco.
+          </p>
+          <p className="text-[11.5px] font-mono mt-4" style={{ color: 'var(--subtle)' }}>
+            DOI: 10.1101/2025.10.21.25338500 · preprint medRxiv (não revisado por pares) · licença CC-BY 4.0
+          </p>
+        </div>
+      </div>
+
+      {/* Limiares */}
+      <div className="grid grid-cols-2 gap-3">
+        {[
+          { label: 'Limiar — Masculino', val: '≥ 0,56', sub: '♂' },
+          { label: 'Limiar — Feminino',  val: '≥ 0,55', sub: '♀' },
+        ].map((item, i) => (
+          <div key={i} className="rounded-2xl p-4"
+            style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
+            <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] mb-2"
+              style={{ color: 'var(--muted)' }}>{item.label}</div>
+            <div className="font-display text-[36px] leading-none num-tabular"
+              style={{ color: 'var(--ink)' }}>{item.val}</div>
+            <div className="text-[11px] mt-1" style={{ color: 'var(--subtle)' }}>
+              encaminhar se score {item.val}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Tabela de pesos */}
+      <div className="rounded-3xl overflow-hidden card-shadow"
+        style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
+        <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
+          <h3 className="font-display text-[18px] leading-none">Pesos por sintoma</h3>
+          <p className="text-[12px] mt-1" style={{ color: 'var(--muted)' }}>
+            Contribuição de cada sintoma ao score final, por sexo biológico
+          </p>
+        </div>
+
+        {/* Cabeçalho da tabela */}
+        <div className="flex items-center px-6 py-2.5"
+          style={{ borderBottom: '1px solid var(--hair-soft)', background: 'var(--paper-2)' }}>
+          <div className="flex-1 text-[10.5px] font-medium uppercase tracking-[0.12em]"
+            style={{ color: 'var(--muted)' }}>Sintoma</div>
+          <div className="w-20 text-center text-[10.5px] font-medium uppercase tracking-[0.12em]"
+            style={{ color: 'var(--muted)' }}>♂ Peso</div>
+          <div className="w-20 text-center text-[10.5px] font-medium uppercase tracking-[0.12em]"
+            style={{ color: 'var(--muted)' }}>♀ Peso</div>
+        </div>
+
+        {sintomas.map((s, i, arr) => {
+          const maxPeso = 0.32;
+          return (
+            <div key={i} className="px-6 py-3.5"
+              style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--hair-soft)' : 'none' }}>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 text-[13.5px]">{s.label}</div>
+
+                {/* ♂ */}
+                <div className="w-20 flex flex-col items-center gap-1">
+                  <span className="font-mono num-tabular text-[12.5px] font-medium"
+                    style={{ color: 'var(--ink)' }}>
+                    {s.pesoM !== null ? s.pesoM.toFixed(2) : '—'}
+                  </span>
+                  <div className="w-full h-1.5 rounded-full overflow-hidden"
+                    style={{ background: 'var(--hair-soft)' }}>
+                    <div className="h-full rounded-full"
+                      style={{
+                        width: s.pesoM !== null ? `${(s.pesoM / maxPeso) * 100}%` : '0%',
+                        background: 'var(--ink)',
+                        opacity: 0.8,
+                      }} />
+                  </div>
+                </div>
+
+                {/* ♀ */}
+                <div className="w-20 flex flex-col items-center gap-1">
+                  <span className="font-mono num-tabular text-[12.5px] font-medium"
+                    style={{ color: 'var(--ink)' }}>
+                    {s.pesoF !== null ? s.pesoF.toFixed(2) : '—'}
+                  </span>
+                  <div className="w-full h-1.5 rounded-full overflow-hidden"
+                    style={{ background: 'var(--hair-soft)' }}>
+                    <div className="h-full rounded-full"
+                      style={{
+                        width: s.pesoF !== null ? `${(s.pesoF / maxPeso) * 100}%` : '0%',
+                        background: 'var(--honey)',
+                        opacity: 0.9,
+                      }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // PÁGINA PRINCIPAL DE CONFIG
 // ═══════════════════════════════════════════════════════════════════════
@@ -206,6 +383,10 @@ function ConfigPage() {
   if (sub === 'relatorios') {
     return <RelatoriosSection onBack={() => setSub(null)} />;
   }
+  if (sub === 'modelos')
+    return <ModelosImpressosSection onBack={() => setSub(null)} />;
+  if (sub === 'parametros')
+    return <ParametrosEscoreSection onBack={() => setSub(null)} />;
 
   const cards = [
     {
@@ -215,16 +396,9 @@ function ConfigPage() {
       action: () => setSub('relatorios'),
     },
     {
-      icon: Icon.print,    tag: 'Documentos',
-      title: 'Modelos de impressos',
-      desc:  'Gerencie modelos de receitas, laudos e atestados médicos.',
-      action: () => {},
-    },
-    {
-      icon: Icon.sparkle,  tag: 'Avançado',
-      title: 'Parâmetros do escore',
-      desc:  'Ajuste limiares de encaminhamento por sexo (♂ 0.56 · ♀ 0.55).',
-      action: () => {},
+      icon: Icon.sparkle, tag: 'Avançado',   title: 'Parâmetros do escore',
+      desc: 'Ajuste limiares de encaminhamento por sexo (♂ 0.56 · ♀ 0.55).',
+      action: () => setSub('parametros'),
     },
   ];
 
