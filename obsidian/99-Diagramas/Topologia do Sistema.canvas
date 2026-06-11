@@ -1,0 +1,35 @@
+{
+  "nodes": [
+    { "id": "start", "type": "file", "x": -160, "y": -780, "width": 620, "height": 70, "color": "3",
+      "file": "Início.md" },
+
+    { "id": "front", "type": "text", "x": -160, "y": -660, "width": 620, "height": 190, "color": "4",
+      "text": "## FRONT-END\nReact via CDN (sem bundler) — páginas: Login, Dashboard, Pacientes, Triagem, Agenda, Config.\n**Fala SÓ** via `frontend/src/api/client.js` (Bearer JWT). Zero acesso direto ao banco." },
+
+    { "id": "back", "type": "text", "x": -160, "y": -400, "width": 620, "height": 200, "color": "5",
+      "text": "## BACK-END — FastAPI (hexagonal)\n`app/main.py` = composition root.\n**presentation -> application -> domain <- interfaces**\nValida JWT, orquestra regras, mascara PII. Não contém a regra de score (delega ao banco)." },
+
+    { "id": "banco", "type": "text", "x": -160, "y": -130, "width": 620, "height": 190, "color": "6",
+      "text": "## BANCO — PostgreSQL 17 + pgcrypto\nTabelas `tb_*` cifradas (BYTEA) viram **views** lógicas que decifram por sessão.\n`fn_calcular_score_triagem()` calcula o score AQUI.\nViews + triggers `INSTEAD OF` + RBAC (`nivel_1` só vê views)." },
+
+    { "id": "regra1", "type": "text", "x": 560, "y": -660, "width": 380, "height": 150, "color": "1",
+      "text": "### Regra de ouro nº 1\nO front fala **exclusivamente** com a API.\n-> [[Decisões de Arquitetura (ADRs)|ADR-0001]]" },
+
+    { "id": "regra2", "type": "text", "x": 560, "y": -130, "width": 380, "height": 150, "color": "1",
+      "text": "### Regra de ouro nº 2\nO back acessa o banco **só pelas views**.\n-> [[Modelo de Dados (Banco)]]" },
+
+    { "id": "doc_visao", "type": "file", "x": 560, "y": -400, "width": 380, "height": 60,
+      "file": "01-Arquitetura/Visão Geral da Arquitetura.md" },
+    { "id": "doc_camadas", "type": "file", "x": 560, "y": -320, "width": 380, "height": 60,
+      "file": "01-Arquitetura/As Quatro Camadas.md" }
+  ],
+  "edges": [
+    { "id": "e1", "fromNode": "front", "fromSide": "bottom", "toNode": "back", "toSide": "top",
+      "label": "HTTPS / JSON · Bearer JWT" },
+    { "id": "e2", "fromNode": "back", "fromSide": "bottom", "toNode": "banco", "toSide": "top",
+      "label": "SQLAlchemy async + asyncpg (só nas views)" },
+    { "id": "e3", "fromNode": "front", "fromSide": "right", "toNode": "regra1", "toSide": "left" },
+    { "id": "e4", "fromNode": "banco", "fromSide": "right", "toNode": "regra2", "toSide": "left" },
+    { "id": "e5", "fromNode": "back", "fromSide": "right", "toNode": "doc_visao", "toSide": "left" }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+	"nodes":[
+		{"id":"app","type":"text","text":"## 2. application/\n**Casos de uso.** Orquestra a regra. HTTP-blind (lança exceções de domínio) e SQL-blind.\n\n`use_cases/` (13) · `dtos/`\n\nEx.: SubmitAnamnesis, GetDashboardStats (k-anonimato).","x":-260,"y":-470,"width":380,"height":260,"color":"2"},
+		{"id":"domain","type":"text","text":"## 3. domain/ (núcleo puro)\nSem fastapi, sem sqlalchemy. Só stdlib + Pydantic.\n\n**Ativas:** `Patient`, `Acompanhante`, VO `CPF`, `SymptomScoringOrchestrator`.\n\nAtenção: `ports/` + `Evaluation/User/...` = LEGADO.","x":370,"y":-470,"width":380,"height":260,"color":"1"},
+		{"id":"pres","type":"text","text":"## 1. presentation/\n**Borda HTTP.** Recebe a requisição, valida (Pydantic `extra=forbid`), chama o use case, **mascara PII**.\n\n`routers/` · `schemas/` · `masking.py`\n\nÚnica camada que conhece `fastapi`.","x":-920,"y":-470,"width":380,"height":260,"color":"5"},
+		{"id":"interf","type":"text","text":"## 4. interfaces/\n**Adapters de saída.** SQL bruto (`text()`) sobre as **views**.\n\n`repositories/` (escrita + leitura / CQRS-lite)\n`api/dependencies.py` -> `get_current_doctor` (JWT).","x":370,"y":-90,"width":380,"height":250,"color":"6"},
+		{"id":"title","type":"text","text":"# As Quatro Camadas — a dependência aponta para o DOMÍNIO (centro)\nRegra: código de fora pode depender de dentro; nunca o contrário. Único onisciente: `app/main.py`.","x":-520,"y":-640,"width":900,"height":110,"color":"3"},
+		{"id":"core","type":"text","text":"## Apoio transversal\n`core/` -> config, JWT (`security.py`), exceções.\n`db/` -> engine + sessão + injeção da `pgp_key`.\n`services/` -> `AuthService` (sessões / login).","x":-920,"y":160,"width":380,"height":250,"color":"4"},
+		{"id":"root","type":"text","text":"## app/main.py\n**Composition root** — o único que importa de todas as camadas.\nCria o app, CORS, **exception handlers** (domínio -> HTTP RFC 7807), inclui os 8 routers, `/health`.","x":-260,"y":35,"width":380,"height":250,"color":"3"}
+	],
+	"edges":[
+		{"id":"e1","fromNode":"pres","fromSide":"right","toNode":"app","toSide":"left","label":"chama"},
+		{"id":"e2","fromNode":"app","fromSide":"right","toNode":"domain","toSide":"left","label":"depende de"},
+		{"id":"e3","fromNode":"interf","fromSide":"top","toNode":"domain","toSide":"bottom","label":"implementa / usa"},
+		{"id":"e4","fromNode":"app","fromSide":"bottom","toNode":"interf","toSide":"left","label":"injeta adapters"},
+		{"id":"e5","fromNode":"root","fromSide":"left","toNode":"pres","toSide":"bottom","label":"registra routers"},
+		{"id":"170aff777f1fc87c","fromNode":"core","fromSide":"right","toNode":"root","toSide":"left"}
+	]
+}

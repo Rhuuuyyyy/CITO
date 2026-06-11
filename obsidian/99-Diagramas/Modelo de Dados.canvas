@@ -1,0 +1,34 @@
+{
+  "nodes": [
+    { "id": "title", "type": "text", "x": -200, "y": -800, "width": 980, "height": 110, "color": "3",
+      "text": "# Modelo de Dados — três camadas (Física -> Lógica -> Relatório)\nO back-end (role `nivel_1`) acessa **somente as views**. -> [[Modelo de Dados (Banco)]]" },
+
+    { "id": "fisica", "type": "text", "x": -200, "y": -640, "width": 460, "height": 380, "color": "6",
+      "text": "## FÍSICA (tb_*) — cifrada\nO back NÃO acessa direto.\n\n- `tb_pacientes` (nome BYTEA, cpf_hash)\n- `tb_acompanhantes` (nome BYTEA)\n- `tb_avaliacoes` (score_final, status)\n- `sintomas` (pesos M/F)\n- `parametro_triagem` (limiar/sexo)\n- `respostas_checklist` (N:M)\n- `tb_historico_familiar`\n- `tb_encaminhamentos`\n- `tb_agendamentos`\n- `usuarios` (senha bcrypt)" },
+
+    { "id": "logica", "type": "text", "x": 320, "y": -640, "width": 460, "height": 340, "color": "4",
+      "text": "## LÓGICA (views) — decifram\nÚnica interface do back.\n\n- **`pacientes`** -> nome decifrado, idade_anos; trigger `INSTEAD OF` cifra no INSERT\n- **`acompanhantes`** -> idem\n- **`avaliacoes`** -> + coluna calculada **`recomenda_exame`** (somente leitura)\n\nCifragem: `pgp_sym_decrypt(..., current_setting('app.pgp_key'))`" },
+
+    { "id": "logs", "type": "text", "x": -200, "y": -230, "width": 460, "height": 190, "color": "1",
+      "text": "## LOGS / AUDITORIA (append-only)\n- `tb_log_sessoes` (id = sessao_id do JWT)\n- `tb_log_tentativas_login` (anti-brute-force)\n- `tb_log_analises` (cada score)\n- `tb_auditoria` (mutações JSONB)" },
+
+    { "id": "relatorio", "type": "text", "x": 320, "y": -230, "width": 460, "height": 190, "color": "2",
+      "text": "## RELATÓRIO — sem PII\n**`vw_dashboard_anonimizado`** (materializada)\nAgregações por sintoma/sexo/idade/etnia/UF.\nGuard de **k-anonimato (k=5)** na aplicação. Refresh `CONCURRENTLY` (admin)." },
+
+    { "id": "score_fn", "type": "text", "x": -200, "y": -10, "width": 980, "height": 140, "color": "5",
+      "text": "## fn_calcular_score_triagem(avaliacao_id) — a regra de negócio mora aqui\nLê respostas -> soma pesos pelo sexo -> compara com limiar -> grava log -> finaliza `tb_avaliacoes`.\nRetorna `TABLE(score_final, limiar_usado, recomenda_exame, versao_param)`. -> [[Cálculo de Score de Triagem]]" },
+
+    { "id": "doc_lgpd", "type": "file", "x": 840, "y": -640, "width": 340, "height": 60,
+      "file": "04-Dominio-do-Negocio/Conformidade LGPD.md" },
+    { "id": "doc_modelo", "type": "file", "x": 840, "y": -560, "width": 340, "height": 60,
+      "file": "04-Dominio-do-Negocio/Modelo de Dados (Banco).md" }
+  ],
+  "edges": [
+    { "id": "e1", "fromNode": "fisica", "fromSide": "right", "toNode": "logica", "toSide": "left",
+      "label": "trigger cifra / view decifra" },
+    { "id": "e2", "fromNode": "logica", "fromSide": "bottom", "toNode": "relatorio", "toSide": "top",
+      "label": "agrega (sem PII)" },
+    { "id": "e3", "fromNode": "fisica", "fromSide": "bottom", "toNode": "score_fn", "toSide": "top" },
+    { "id": "e4", "fromNode": "logica", "fromSide": "right", "toNode": "doc_lgpd", "toSide": "left" }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+	"nodes":[
+		{"id":"title","type":"text","x":-200,"y":-880,"width":760,"height":130,"color":"3","text":"# POST /api/v1/avaliacoes — Submissão de Anamnese\nO coração clínico. Tudo numa única transação (`AsyncSession` -> commit/rollback).\n-> [[Fluxo - Submissão de Anamnese]]"},
+		{"id":"http","type":"text","x":-200,"y":-720,"width":760,"height":150,"color":"5","text":"### presentation/routers/anamnesis.py\n1. `get_current_doctor()` valida JWT -> `AuthenticatedDoctor`\n2. `_to_dto()` traduz `SubmitAnamnesisRequest` -> `SubmitAnamnesisDTO`\n3. `_build_use_case()` injeta 6 repos + orchestrator"},
+		{"id":"uc","type":"text","x":-200,"y":-540,"width":760,"height":80,"color":"2","text":"### application/use_cases/submit_anamnesis.py -> execute()  (passos 1 a 7 abaixo)"},
+		{"id":"s1","type":"text","x":-200,"y":-430,"width":370,"height":120,"color":"6","text":"**Step 1 — create_rascunho()**\n`INSERT avaliacoes (status='rascunho')`\n-> retorna `avaliacao_id`"},
+		{"id":"s2","type":"text","x":190,"y":-430,"width":370,"height":120,"color":"6","text":"**Step 2 — open_log_analise()**\n`INSERT tb_log_analises`\n(registra abertura do form)"},
+		{"id":"s3","type":"text","x":-200,"y":-290,"width":370,"height":120,"color":"6","text":"**Step 3 — insert_respostas()**\n`INSERT respostas_checklist` (bulk)\nrespostas por sintoma"},
+		{"id":"s4","type":"text","x":190,"y":-290,"width":370,"height":120,"color":"6","text":"**Step 4 — historico.add()**\n`INSERT tb_historico_familiar`\n(fatal — consistência clínica)"},
+		{"id":"s5","type":"text","x":-200,"y":-150,"width":760,"height":160,"color":"1","text":"### Step 5 — SymptomScoringOrchestrator.execute_scoring()\n`SELECT * FROM fn_calcular_score_triagem(:id)`  <- **A REGRA VIVE NO BANCO**\nCalcula score · compara com limiar(sexo) · **finaliza** a avaliação · loga · retorna `ScoringResult`"},
+		{"id":"s6","type":"text","x":-200,"y":40,"width":370,"height":120,"color":"6","text":"**Step 6 — SE recomenda_exame:**\n`INSERT tb_encaminhamentos`\n`tipo='exame_fmr1'`, auto=True (fatal)"},
+		{"id":"s7","type":"text","x":190,"y":40,"width":370,"height":140,"color":"4","text":"**Step 7 — audit.registrar()**\n`fn_registrar_auditoria(...)`\n*best-effort* (SAVEPOINT + try/except — nunca derruba o fluxo)"},
+		{"id":"resp","type":"text","x":-200,"y":210,"width":760,"height":150,"color":"5","text":"### AvaliacaoResponse\n`{ avaliacao_id, paciente_id, score_final, limiar_usado, recomenda_exame, versao_param, status:'finalizada' }`\n(erro de banco em qualquer passo -> HTTP 502)"},
+		{"id":"doc_flow","type":"file","x":620,"y":-720,"width":360,"height":70,"file":"02-Fluxos/Fluxo - Submissão de Anamnese.md"},
+		{"id":"doc_score","type":"file","x":620,"y":-150,"width":360,"height":70,"color":"1","file":"04-Dominio-do-Negocio/Cálculo de Score de Triagem.md"}
+	],
+	"edges":[
+		{"id":"e0","fromNode":"title","fromSide":"bottom","toNode":"http","toSide":"top"},
+		{"id":"e1","fromNode":"http","fromSide":"bottom","toNode":"uc","toSide":"top"},
+		{"id":"e2","fromNode":"uc","fromSide":"bottom","toNode":"s1","toSide":"top"},
+		{"id":"e3","fromNode":"s1","fromSide":"right","toNode":"s2","toSide":"left"},
+		{"id":"e4","fromNode":"s2","fromSide":"bottom","toNode":"s3","toSide":"top"},
+		{"id":"e5","fromNode":"s3","fromSide":"right","toNode":"s4","toSide":"left"},
+		{"id":"e6","fromNode":"s4","fromSide":"bottom","toNode":"s5","toSide":"top"},
+		{"id":"e7","fromNode":"s5","fromSide":"bottom","toNode":"s6","toSide":"top"},
+		{"id":"e8","fromNode":"s6","fromSide":"right","toNode":"s7","toSide":"left"},
+		{"id":"e9","fromNode":"s7","fromSide":"bottom","toNode":"resp","toSide":"top"},
+		{"id":"e10","fromNode":"s5","fromSide":"right","toNode":"doc_score","toSide":"left","label":"fonte da verdade"}
+	]
+}
