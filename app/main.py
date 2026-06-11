@@ -5,6 +5,8 @@ It is the ONLY file allowed to import from every other layer.
 """
 from __future__ import annotations
 
+import os
+
 from pathlib import Path
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -164,9 +166,18 @@ def create_app() -> FastAPI:
     app.include_router(users.router, prefix=settings.api_prefix)
 
     # ── Health probe (outside api_prefix for infra / k8s) ────────────────────
+    # ── Health probe (Detetive) ────────────────────
     @app.get("/health", tags=["Meta"])
-    async def health() -> dict[str, str]:
-        return {"status": "ok", "service": settings.app_name}
+    async def health() -> dict:
+        root_dir = Path(__file__).resolve().parent.parent
+        frontend_dir = root_dir / "frontend"
+        
+        return {
+            "status": "ok",
+            "frontend_exists": frontend_dir.is_dir(),
+            "frontend_path": str(frontend_dir),
+            "root_contents": os.listdir(root_dir)
+        }
 
     # ── Frontend (Adicionado para o Azure) ────────────────────────────────────
     # Calcula o caminho para a pasta frontend (app/main.py -> app/ -> raiz -> frontend/)
