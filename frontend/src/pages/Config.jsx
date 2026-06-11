@@ -215,33 +215,15 @@ function ConfigPage() {
       action: () => setSub('relatorios'),
     },
     {
-      icon: Icon.calendar, tag: 'Clínico',
-      title: 'Gerência de agenda',
-      desc:  'Remarque, cancele ou reagende consultas já cadastradas no sistema.',
-      action: () => {},
-    },
-    {
       icon: Icon.print,    tag: 'Documentos',
       title: 'Modelos de impressos',
       desc:  'Gerencie modelos de receitas, laudos e atestados médicos.',
       action: () => {},
     },
     {
-      icon: Icon.phone,    tag: 'Contatos',
-      title: 'Agenda telefônica',
-      desc:  'Gerencie os contatos de telefone associados aos seus pacientes.',
-      action: () => {},
-    },
-    {
       icon: Icon.sparkle,  tag: 'Avançado',
       title: 'Parâmetros do escore',
       desc:  'Ajuste limiares de encaminhamento por sexo (♂ 0.56 · ♀ 0.55).',
-      action: () => {},
-    },
-    {
-      icon: Icon.users,    tag: 'Acesso',
-      title: 'Equipe clínica',
-      desc:  'Cadastre médicos, técnicos e gerencie permissões de acesso.',
       action: () => {},
     },
   ];
