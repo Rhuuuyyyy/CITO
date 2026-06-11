@@ -14,9 +14,17 @@ function statusInfo(s) {
 const agSelectArrow = "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6862' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>\")";
 const agSelectStyle = { ...inputStyle, backgroundImage: agSelectArrow, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 16px center' };
 
-function ModalAgendamento({ onClose, onSalvar }) {
+function ModalAgendamento({ onClose, onSalvar, inicial }) {
+  const editando = !!inicial;
   const [pacientes, setPacientes] = useState([]);
-  const [form, setForm] = useState({ pacienteId: '', titulo: '', tipo: 'Triagem SXF', data: '', hora: '', status: 'confirmado' });
+  const [form, setForm] = useState(() => editando ? {
+    pacienteId: '',
+    titulo: inicial.titulo || '',
+    tipo: inicial.tipo || 'Triagem SXF',
+    data: (inicial.data_hora || '').slice(0, 10),
+    hora: (inicial.data_hora || '').slice(11, 16),
+    status: inicial.status || 'confirmado',
+  } : { pacienteId: '', titulo: '', tipo: 'Triagem SXF', data: '', hora: '', status: 'confirmado' });
   const [erro, setErro] = useState('');
   const [salvando, setSalvando] = useState(false);
 
@@ -51,7 +59,7 @@ function ModalAgendamento({ onClose, onSalvar }) {
 
         <div className="flex items-center justify-between px-7 pt-7 pb-5"
           style={{ borderBottom: '1px solid var(--hair-soft)' }}>
-          <h2 className="font-display text-[24px] leading-none">Novo agendamento</h2>
+          <h2 className="font-display text-[24px] leading-none">{editando ? 'Editar agendamento' : 'Novo agendamento'}</h2>
           <button onClick={onClose}
             className="w-9 h-9 rounded-full flex items-center justify-center lift"
             style={{ border: '1px solid var(--hair)', color: 'var(--muted)' }}>
@@ -65,13 +73,15 @@ function ModalAgendamento({ onClose, onSalvar }) {
               style={{ background: 'var(--rust-soft)', color: 'var(--rust)' }}>{erro}</div>
           )}
 
-          <Field label="Paciente cadastrado">
-            <select className={`${inputCls} focus-ink appearance-none`} style={agSelectStyle}
-              value={form.pacienteId} onChange={(e) => escolherPaciente(e.target.value)}>
-              <option value="">— Selecionar (opcional) —</option>
-              {pacientes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
-            </select>
-          </Field>
+          {!editando && (
+            <Field label="Paciente cadastrado">
+              <select className={`${inputCls} focus-ink appearance-none`} style={agSelectStyle}
+                value={form.pacienteId} onChange={(e) => escolherPaciente(e.target.value)}>
+                <option value="">— Selecionar (opcional) —</option>
+                {pacientes.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+              </select>
+            </Field>
+          )}
 
           <Field label="Paciente / título" required>
             <input className={`${inputCls} focus-ink`} style={inputStyle} type="text"
@@ -110,7 +120,7 @@ function ModalAgendamento({ onClose, onSalvar }) {
           style={{ borderTop: '1px solid var(--hair-soft)' }}>
           <BtnGhost onClick={onClose}>Cancelar</BtnGhost>
           <BtnPrimary onClick={salvar} disabled={salvando}>
-            {salvando ? 'Salvando…' : <>{Icon.check} Agendar</>}
+            {salvando ? 'Salvando…' : <>{Icon.check} {editando ? 'Salvar' : 'Agendar'}</>}
           </BtnPrimary>
         </div>
       </div>
@@ -121,7 +131,7 @@ function ModalAgendamento({ onClose, onSalvar }) {
 function AgendaPage({ usuario }) {
   const [agendamentos, setAgendamentos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(false);
+  const [modalAg, setModalAg] = useState(null); // null | { item: null|obj }
 
   async function carregar() {
     setLoading(true);
@@ -138,20 +148,40 @@ function AgendaPage({ usuario }) {
   useEffect(() => { carregar(); }, []);
 
   async function salvarAgendamento(form) {
+    const editando = modalAg && modalAg.item;
+    const body = {
+      titulo: form.titulo.trim(),
+      tipo: form.tipo,
+      data_hora: `${form.data}T${form.hora}:00`,
+      status: form.status,
+    };
     try {
-      await api.createAgendamento({
-        titulo: form.titulo.trim(),
-        tipo: form.tipo,
-        data_hora: `${form.data}T${form.hora}:00`,
-        status: form.status,
-        paciente_id: form.pacienteId ? Number(form.pacienteId) : null,
-      });
+      if (editando) {
+        await api.updateAgendamento(modalAg.item.id, body);
+      } else {
+        await api.createAgendamento({
+          ...body,
+          paciente_id: form.pacienteId ? Number(form.pacienteId) : null,
+        });
+      }
     } catch (err) {
-      console.error('Erro ao agendar:', err);
-      alert('Não foi possível criar o agendamento: ' + (err.message || 'erro desconhecido'));
+      console.error('Erro ao salvar agendamento:', err);
+      alert('Não foi possível salvar o agendamento: ' + (err.message || 'erro desconhecido'));
       return;
     }
-    setModal(false);
+    setModalAg(null);
+    carregar();
+  }
+
+  async function excluirAgendamento(a) {
+    if (!window.confirm(`Excluir o agendamento "${a.titulo}"?`)) return;
+    try {
+      await api.deleteAgendamento(a.id);
+    } catch (err) {
+      console.error('Erro ao excluir agendamento:', err);
+      alert('Não foi possível excluir: ' + (err.message || 'erro desconhecido'));
+      return;
+    }
     carregar();
   }
 
@@ -168,7 +198,7 @@ function AgendaPage({ usuario }) {
         <Card className="p-6">
           <CalendarWidget marks={marks} />
           <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--hair-soft)' }}>
-            <BtnPrimary className="w-full justify-center" onClick={() => setModal(true)}>
+            <BtnPrimary className="w-full justify-center" onClick={() => setModalAg({ item: null })}>
               {Icon.plus} Novo agendamento
             </BtnPrimary>
           </div>
@@ -215,7 +245,21 @@ function AgendaPage({ usuario }) {
                         <div className="font-display text-[20px] leading-tight">{a.titulo}</div>
                         <div className="text-[12.5px] mt-1" style={{ color: 'var(--muted)' }}>{a.tipo}</div>
                       </div>
-                      <Pill tone={tone}>{label}</Pill>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <Pill tone={tone}>{label}</Pill>
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => setModalAg({ item: a })}
+                            className="text-[11.5px] font-medium lift" style={{ color: 'var(--muted)' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--ink)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted)'; }}>
+                            Editar
+                          </button>
+                          <button onClick={() => excluirAgendamento(a)}
+                            className="text-[11.5px] font-medium lift" style={{ color: 'var(--rust)' }}>
+                            Excluir
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 );
@@ -225,7 +269,7 @@ function AgendaPage({ usuario }) {
         </div>
       </Card>
 
-      {modal && <ModalAgendamento onClose={() => setModal(false)} onSalvar={salvarAgendamento} />}
+      {modalAg && <ModalAgendamento inicial={modalAg.item} onClose={() => setModalAg(null)} onSalvar={salvarAgendamento} />}
     </div>
   );
 }

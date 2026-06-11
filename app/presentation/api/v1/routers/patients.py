@@ -6,20 +6,27 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.use_cases.get_patient_detail import GetPatientDetailUseCase
 from app.application.use_cases.get_patient_list import GetPatientListUseCase
+from app.application.use_cases.manage_patients import (
+    DeletePacienteUseCase,
+    SetPacienteAtivoUseCase,
+)
 from app.application.use_cases.register_patient import RegisterPatientUseCase
 from app.db.database import get_db_session
 from app.interfaces.api.dependencies import AuthenticatedDoctor, get_current_doctor
 from app.interfaces.repositories.acompanhante_repository import AcompanhanteRepository
 from app.interfaces.repositories.patient_read_repository import PatientReadRepository
 from app.interfaces.repositories.patient_repository import PatientRepository
+from app.interfaces.repositories.user_repository import UserRepository
 from app.presentation.api.v1.masking import CPF_MASK
 from app.presentation.api.v1.schemas.patient import (
     AcompanhanteDetailSchema,
     PatientCreateRequest,
+    PatientDeleteRequest,
     PatientDetailResponse,
     PatientListItemSchema,
     PatientListResponse,
     PatientResponse,
+    PatientSetAtivoRequest,
 )
 
 router = APIRouter(prefix="/pacientes", tags=["Pacientes"])
@@ -78,6 +85,9 @@ async def list_patients(
     session: AsyncSession = Depends(get_db_session),
     nome: str | None = Query(default=None, description="Busca parcial por nome"),
     cpf: str | None = Query(default=None, description="CPF em dígitos"),
+    incluir_inativos: bool = Query(
+        default=False, description="Incluir pacientes arquivados (ativo=FALSE)"
+    ),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
 ) -> PatientListResponse:
@@ -86,6 +96,7 @@ async def list_patients(
         usuario_id=doctor.usuario_id,
         nome_filter=nome,
         cpf_raw_filter=cpf,
+        incluir_inativos=incluir_inativos,
         limit=limit,
         offset=offset,
     )
@@ -102,6 +113,7 @@ async def list_patients(
                 ultimo_score=item.ultimo_score,
                 ultima_avaliacao=item.ultima_avaliacao,
                 recomenda_exame=item.recomenda_exame,
+                ativo=item.ativo,
             )
             for item in result.items
         ],
@@ -161,4 +173,45 @@ async def get_patient_detail(
             )
             for a in detail.acompanhantes
         ],
+    )
+
+
+@router.patch(
+    "/{paciente_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Arquivar/reativar paciente",
+)
+async def set_patient_ativo(
+    paciente_id: int,
+    payload: PatientSetAtivoRequest,
+    doctor: AuthenticatedDoctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    use_case = SetPacienteAtivoUseCase(patients=PatientRepository(session))
+    await use_case.execute(
+        paciente_id=paciente_id,
+        usuario_id=doctor.usuario_id,
+        ativo=payload.ativo,
+    )
+
+
+@router.delete(
+    "/{paciente_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir paciente definitivamente (cascata, confirma com senha)",
+)
+async def delete_patient(
+    paciente_id: int,
+    payload: PatientDeleteRequest,
+    doctor: AuthenticatedDoctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    use_case = DeletePacienteUseCase(
+        patients=PatientRepository(session),
+        users=UserRepository(session),
+    )
+    await use_case.execute(
+        paciente_id=paciente_id,
+        usuario_id=doctor.usuario_id,
+        senha=payload.senha,
     )

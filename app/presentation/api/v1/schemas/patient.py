@@ -78,6 +78,23 @@ class PatientListItemSchema(BaseModel):
     recomenda_exame: bool | None = Field(
         default=None, description="Status de risco: TRUE = encaminhar para exame"
     )
+    ativo: bool = Field(default=True, description="FALSE = paciente arquivado")
+
+
+class PatientSetAtivoRequest(BaseModel):
+    """Arquivar (ativo=FALSE) ou reativar (ativo=TRUE) um paciente."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ativo: bool
+
+
+class PatientDeleteRequest(BaseModel):
+    """Exclusão definitiva (cascata), confirmada com a senha do médico."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    senha: str = Field(min_length=1, max_length=128)
 
 
 class PatientListResponse(BaseModel):

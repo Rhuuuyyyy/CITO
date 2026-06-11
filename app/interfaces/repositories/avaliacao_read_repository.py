@@ -21,6 +21,47 @@ class AvaliacaoHistoricoItem:
     recomenda_exame: bool | None
 
 
+@dataclass(frozen=True)
+class SintomaRespostaItem:
+    """One per-symptom answer of an evaluation, for reprinting the laudo."""
+
+    descricao: str
+    presente: bool
+
+
+@dataclass(frozen=True)
+class HistoricoFamiliarItem:
+    """Family history flags recorded for one evaluation."""
+
+    deficiencia_intelectual: bool
+    falencia_ovariana_precoce: bool
+    autismo_na_familia: bool
+    epilepsia: bool
+    infertilidade_masculina: bool
+    menopausa_precoce: bool
+    abortos_recorrentes: bool
+    tremor_ataxia_familiar: bool
+    descricao_outros: str | None
+
+
+@dataclass(frozen=True)
+class AvaliacaoFullDetail:
+    """Complete evaluation needed to reprint the screening laudo (PDF)."""
+
+    avaliacao_id: int
+    data_avaliacao: datetime
+    score_final: float | None
+    recomenda_exame: bool | None
+    paciente_nome: str
+    paciente_sexo: str | None
+    paciente_data_nascimento: str | None
+    acompanhante_nome: str | None
+    acompanhante_telefone: str | None
+    acompanhante_email: str | None
+    sintomas: list[SintomaRespostaItem]
+    historico: HistoricoFamiliarItem | None
+
+
 class AvaliacaoReadRepository:
     """Reads evaluation history from the 'avaliacoes' view."""
 
@@ -71,6 +112,109 @@ class AvaliacaoReadRepository:
             )
             for r in rows
         ]
+
+    async def get_full(
+        self,
+        *,
+        avaliacao_id: int,
+        usuario_id: int,
+    ) -> AvaliacaoFullDetail | None:
+        """Full evaluation (patient, caregiver, symptoms, family history).
+
+        Scoped to the requesting doctor through ``pacientes.criado_por``; returns
+        ``None`` when the evaluation does not exist or belongs to another doctor.
+        """
+        head = await self._session.execute(
+            text(
+                """
+                SELECT a.id AS avaliacao_id, a.data_avaliacao,
+                       a.score_final, a.recomenda_exame,
+                       p.nome AS paciente_nome, p.sexo AS paciente_sexo,
+                       TO_CHAR(p.data_nascimento, 'YYYY-MM-DD') AS data_nascimento,
+                       ac.nome AS acomp_nome, ac.telefone AS acomp_telefone,
+                       ac.email AS acomp_email
+                FROM   avaliacoes a
+                JOIN   pacientes  p ON p.id = a.paciente_id
+                LEFT JOIN acompanhantes ac ON ac.id = p.acompanhante_id
+                WHERE  a.id = :avaliacao_id AND p.criado_por = :usuario_id
+                """
+            ),
+            {"avaliacao_id": avaliacao_id, "usuario_id": usuario_id},
+        )
+        h = head.mappings().first()
+        if h is None:
+            return None
+
+        sint_rows = await self._session.execute(
+            text(
+                """
+                SELECT s.descricao, rc.presente
+                FROM   respostas_checklist rc
+                JOIN   sintomas s ON s.id = rc.sintoma_id
+                WHERE  rc.avaliacao_id = :avaliacao_id
+                ORDER  BY s.id
+                """
+            ),
+            {"avaliacao_id": avaliacao_id},
+        )
+        sintomas = [
+            SintomaRespostaItem(
+                descricao=str(r["descricao"]),
+                presente=bool(r["presente"]),
+            )
+            for r in sint_rows.mappings().all()
+        ]
+
+        hist_row = await self._session.execute(
+            text(
+                """
+                SELECT deficiencia_intelectual, falencia_ovariana_precoce,
+                       autismo_na_familia, epilepsia, infertilidade_masculina,
+                       menopausa_precoce, abortos_recorrentes,
+                       tremor_ataxia_familiar, descricao_outros
+                FROM   tb_historico_familiar
+                WHERE  avaliacao_id = :avaliacao_id
+                """
+            ),
+            {"avaliacao_id": avaliacao_id},
+        )
+        hr = hist_row.mappings().first()
+        historico = (
+            HistoricoFamiliarItem(
+                deficiencia_intelectual=bool(hr["deficiencia_intelectual"]),
+                falencia_ovariana_precoce=bool(hr["falencia_ovariana_precoce"]),
+                autismo_na_familia=bool(hr["autismo_na_familia"]),
+                epilepsia=bool(hr["epilepsia"]),
+                infertilidade_masculina=bool(hr["infertilidade_masculina"]),
+                menopausa_precoce=bool(hr["menopausa_precoce"]),
+                abortos_recorrentes=bool(hr["abortos_recorrentes"]),
+                tremor_ataxia_familiar=bool(hr["tremor_ataxia_familiar"]),
+                descricao_outros=(
+                    str(hr["descricao_outros"]) if hr["descricao_outros"] else None
+                ),
+            )
+            if hr is not None
+            else None
+        )
+
+        return AvaliacaoFullDetail(
+            avaliacao_id=int(h["avaliacao_id"]),
+            data_avaliacao=cast(datetime, h["data_avaliacao"]),
+            score_final=cast("float | None", h["score_final"]),
+            recomenda_exame=cast("bool | None", h["recomenda_exame"]),
+            paciente_nome=str(h["paciente_nome"]),
+            paciente_sexo=str(h["paciente_sexo"]) if h["paciente_sexo"] else None,
+            paciente_data_nascimento=(
+                str(h["data_nascimento"]) if h["data_nascimento"] else None
+            ),
+            acompanhante_nome=str(h["acomp_nome"]) if h["acomp_nome"] else None,
+            acompanhante_telefone=(
+                str(h["acomp_telefone"]) if h["acomp_telefone"] else None
+            ),
+            acompanhante_email=str(h["acomp_email"]) if h["acomp_email"] else None,
+            sintomas=sintomas,
+            historico=historico,
+        )
 
     async def count_by_paciente(
         self,

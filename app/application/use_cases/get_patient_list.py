@@ -45,6 +45,7 @@ class GetPatientListUseCase:
         usuario_id: int,
         nome_filter: str | None = None,
         cpf_raw_filter: str | None = None,
+        incluir_inativos: bool = False,
         limit: int = 50,
         offset: int = 0,
     ) -> PatientListResult:
@@ -72,11 +73,13 @@ class GetPatientListUseCase:
             usuario_id=usuario_id,
             nome_filter=nome_filter,
             cpf_hash_filter=cpf_hash_filter,
+            incluir_inativos=incluir_inativos,
         )
         items = await self._patients.list_by_doctor(
             usuario_id=usuario_id,
             nome_filter=nome_filter,
             cpf_hash_filter=cpf_hash_filter,
+            incluir_inativos=incluir_inativos,
             limit=limit,
             offset=offset,
         )

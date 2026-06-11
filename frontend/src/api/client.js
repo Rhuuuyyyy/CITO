@@ -97,8 +97,8 @@ const api = {
       try { const d = await res.json(); detail = d.detail || detail; } catch (e) {}
       const err = new Error(detail); err.status = res.status; throw err;
     }
-    const data = await res.json(); // {access_token, token_type, sessao_id, usuario_id}
-    const user = { id: data.usuario_id, sessao_id: data.sessao_id };
+    const data = await res.json(); // {access_token, token_type, sessao_id, usuario_id, tipo}
+    const user = { id: data.usuario_id, sessao_id: data.sessao_id, tipo: data.tipo };
     this.setSession(data.access_token, user);
     return user;
   },
@@ -123,6 +123,7 @@ const api = {
     if (params) {
       if (params.nome) qs.set('nome', params.nome);
       if (params.cpf) qs.set('cpf', params.cpf);
+      if (params.incluir_inativos) qs.set('incluir_inativos', 'true');
       if (params.limit) qs.set('limit', params.limit);
       if (params.offset != null) qs.set('offset', params.offset);
     }
@@ -131,13 +132,24 @@ const api = {
   },
   createPaciente(body) { return this.post('/pacientes', body); },
   getPacienteDetalhe(id) { return this.get('/pacientes/' + id); },
+  setPacienteAtivo(id, ativo) { return this._request('PATCH', '/pacientes/' + id, { ativo }); },
+  deletePaciente(id, senha) { return this._request('DELETE', '/pacientes/' + id, { senha }); },
   getHistorico(pacienteId) { return this.get('/pacientes/' + pacienteId + '/historico'); },
 
   createAvaliacao(body) { return this.post('/avaliacoes', body); },
+  getAvaliacaoDetalhe(id) { return this.get('/avaliacoes/' + id); },
 
   getDashboardSummary() { return this.get('/dashboard/summary'); },
   getRelatorioAvaliacoes() { return this.get('/relatorios/avaliacoes'); },
 
   getAgendamentos() { return this.get('/agendamentos'); },
   createAgendamento(body) { return this.post('/agendamentos', body); },
+  updateAgendamento(id, body) { return this._request('PATCH', '/agendamentos/' + id, body); },
+  deleteAgendamento(id) { return this._request('DELETE', '/agendamentos/' + id); },
+
+  // ── Usuários (admin) ─────────────────────────────────────────────────────
+  getUsuarios() { return this.get('/usuarios'); },
+  createUsuario(body) { return this.post('/usuarios', body); },
+  setUsuarioAtivo(id, ativo) { return this._request('PATCH', '/usuarios/' + id, { ativo }); },
+  deleteUsuario(id, senhaAdmin) { return this._request('DELETE', '/usuarios/' + id, { senha_admin: senhaAdmin }); },
 };

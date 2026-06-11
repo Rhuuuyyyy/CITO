@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════════════════════════
 // SIDEBAR
 // ═══════════════════════════════════════════════════════════════════════
-function Sidebar({ active, onNav, open, onClose, onLogout }) {
+function Sidebar({ active, onNav, open, onClose, onLogout, usuario }) {
+  const isAdmin = usuario?.tipo === 'admin';
   const sections = [
     {
       label: 'Painel', items: [
@@ -17,6 +18,8 @@ function Sidebar({ active, onNav, open, onClose, onLogout }) {
     },
     {
       label: 'Sistema', items: [
+        // 'Usuários' só aparece para admin; o backend também exige admin (403).
+        ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: Icon.users }] : []),
         { id: 'config', label: 'Configurações', icon: Icon.settings },
       ]
     },

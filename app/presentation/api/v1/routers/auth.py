@@ -34,12 +34,14 @@ async def login(
             detail="Muitas tentativas de login. Tente novamente em 10 minutos.",
         )
 
-    usuario_id = await auth_service.authenticate_doctor(
+    auth_result = await auth_service.authenticate_doctor(
         email=form_data.username,
         senha_plain=form_data.password,
     )
 
-    sucesso = usuario_id is not None
+    sucesso = auth_result is not None
+    usuario_id: int | None = auth_result[0] if auth_result else None
+    tipo: str | None = auth_result[1] if auth_result else None
     sessao_id: int | None = None
 
     if sucesso and usuario_id is not None:
@@ -56,7 +58,8 @@ async def login(
         sucesso=sucesso,
         usuario_id=usuario_id,
         sessao_id=sessao_id,
-        motivo_falha=None if sucesso else "credenciais_invalidas",
+        # 'senha_incorreta' é um valor aceito pelo CHECK de motivo_falha.
+        motivo_falha=None if sucesso else "senha_incorreta",
     )
 
     if not sucesso or sessao_id is None or usuario_id is None:
@@ -66,9 +69,12 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # O papel no token reflete o tipo real do banco: admin → 'admin',
+    # médico → 'doctor' (compatível com get_current_doctor).
+    role = "admin" if tipo == "admin" else "doctor"
     access_token = issue_access_token(
         usuario_id=usuario_id,
-        role="doctor",
+        role=role,
         sessao_id=sessao_id,
     )
 
@@ -77,6 +83,7 @@ async def login(
         token_type="Bearer",
         sessao_id=sessao_id,
         usuario_id=usuario_id,
+        tipo=tipo,
     )
 
 

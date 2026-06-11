@@ -5,6 +5,7 @@ function App() {
   // Restore an existing session (JWT in sessionStorage) on reload.
   const [usuario, setUsuario]         = useState(() => (api.getToken() ? api.getUser() : null));
   const [page, setPage]               = useState('dashboard');
+  const [navPayload, setNavPayload]   = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme]             = useState(() => {
     try { return localStorage.getItem('cito-theme') || 'light'; }
@@ -52,11 +53,13 @@ function App() {
     pacientes:    { title: 'Pacientes',     subtitle: 'Prontuários ativos e histórico clínico' },
     atendimentos: { title: 'Atendimentos',  subtitle: 'Sessões e retornos do dia' },
     config:       { title: 'Configurações', subtitle: 'Preferências do módulo clínico' },
+    usuarios:     { title: 'Usuários',      subtitle: 'Gestão de médicos e acessos (admin)' },
   };
   const meta = pageMeta[page] || pageMeta.dashboard;
 
-  function nav(id) {
+  function nav(id, payload = null) {
     setPage(id);
+    setNavPayload(payload);
     setSidebarOpen(false);
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
@@ -69,6 +72,7 @@ function App() {
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onLogout={logout}
+        usuario={usuario}
       />
       <div className="flex-1 flex flex-col lg:ml-[252px] min-w-0">
         <Topbar title={meta.title} subtitle={meta.subtitle} onMenu={() => setSidebarOpen(true)}>
@@ -78,8 +82,9 @@ function App() {
           {page === 'dashboard'    && <DashboardPage onNav={nav} />}
           {page === 'agenda'       && <AgendaPage usuario={usuario} />}
           {page === 'triagem'      && <TriagemPage onNav={nav} usuario={usuario} />}
-          {page === 'pacientes'    && <PacientesPage usuario={usuario} />}
+          {page === 'pacientes'    && <PacientesPage usuario={usuario} abrirPacienteId={navPayload?.pacienteId || null} />}
           {page === 'config'       && <ConfigPage />}
+          {page === 'usuarios'     && usuario?.tipo === 'admin' && <UsuariosPage usuario={usuario} />}
         </main>
         <footer className="px-10 py-8 text-center" style={{ color: 'var(--subtle)' }}>
           <div className="flex justify-center mb-4" style={{ opacity: 0.45 }}>

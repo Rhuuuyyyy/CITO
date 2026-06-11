@@ -1,6 +1,8 @@
 """Request/response Pydantic schemas for the anamnesis (evaluation) endpoints."""
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -79,3 +81,34 @@ class AvaliacaoResponse(BaseModel):
         description="Versão do modelo científico usado (ex: ROMERO_2025_v1_M)"
     )
     status: str = Field(description="Status da avaliação: 'finalizada' ou 'cancelada'")
+
+
+class SintomaRespostaDetalheSchema(BaseModel):
+    """One answered symptom of a past evaluation (for reprinting the laudo)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    descricao: str
+    presente: bool
+
+
+class AvaliacaoDetalheResponse(BaseModel):
+    """Full evaluation used to reprint the screening laudo (PDF).
+
+    Nome do paciente/acompanhante em claro (médico dono); sem CPF.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    avaliacao_id: int
+    data_avaliacao: datetime
+    score_final: float | None = None
+    recomenda_exame: bool | None = None
+    paciente_nome: str
+    paciente_sexo: str | None = None
+    paciente_data_nascimento: str | None = None
+    acompanhante_nome: str | None = None
+    acompanhante_telefone: str | None = None
+    acompanhante_email: str | None = None
+    sintomas: list[SintomaRespostaDetalheSchema]
+    historico_familiar: HistoricoFamiliarSchema | None = None

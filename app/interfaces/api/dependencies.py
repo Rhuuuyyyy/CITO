@@ -49,3 +49,19 @@ async def get_current_doctor(
         sessao_id=claims.sessao_id,
         role=claims.role,
     )
+
+
+async def get_current_admin(
+    doctor: AuthenticatedDoctor = Depends(get_current_doctor),
+) -> AuthenticatedDoctor:
+    """Require an authenticated user with the 'admin' role (HTTP 403 otherwise).
+
+    This is the real access gate for admin-only endpoints — the frontend hiding
+    the menu is only UX.
+    """
+    if doctor.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Apenas administradores podem acessar este recurso.",
+        )
+    return doctor

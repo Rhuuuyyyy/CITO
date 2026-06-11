@@ -3,15 +3,34 @@
 // ═══════════════════════════════════════════════════════════════════════
 
 // ── Modal de reagendamento ───────────────────────────────────────────
-function ModalReagendar({ appt, onClose }) {
+function ModalReagendar({ appt, onClose, onSaved }) {
   const [data, setData]   = useState('');
   const [hora, setHora]   = useState('');
   const [motivo, setMotivo] = useState('');
   const [ok, setOk]       = useState(false);
+  const [erro, setErro]   = useState('');
+  const [salvando, setSalvando] = useState(false);
 
-  function confirmar() {
+  async function confirmar() {
     if (!data || !hora) return;
+    setSalvando(true);
+    setErro('');
+    try {
+      await api.updateAgendamento(appt.id, {
+        titulo: appt.titulo,
+        tipo: appt.tipo,
+        data_hora: `${data}T${hora}:00`,
+        status: appt.statusRaw,
+      });
+    } catch (e) {
+      console.error('Erro ao reagendar:', e);
+      setErro(e.message || 'Não foi possível reagendar.');
+      setSalvando(false);
+      return;
+    }
+    setSalvando(false);
     setOk(true);
+    if (onSaved) onSaved();
     setTimeout(onClose, 1400);
   }
 
@@ -106,12 +125,14 @@ function ModalReagendar({ appt, onClose }) {
 
         {/* Footer */}
         {!ok && (
-          <div className="flex items-center justify-between px-6 py-4"
-            style={{ borderTop: '1px solid var(--hair-soft)' }}>
-            <BtnGhost onClick={onClose}>Cancelar</BtnGhost>
-            <BtnPrimary onClick={confirmar} disabled={!data || !hora}>
-              {Icon.check} Confirmar reagendamento
-            </BtnPrimary>
+          <div className="px-6 py-4" style={{ borderTop: '1px solid var(--hair-soft)' }}>
+            {erro && <p className="text-[12.5px] mb-3" style={{ color: 'var(--rust)' }}>{erro}</p>}
+            <div className="flex items-center justify-between">
+              <BtnGhost onClick={onClose}>Cancelar</BtnGhost>
+              <BtnPrimary onClick={confirmar} disabled={!data || !hora || salvando}>
+                {salvando ? 'Salvando…' : <>{Icon.check} Confirmar reagendamento</>}
+              </BtnPrimary>
+            </div>
           </div>
         )}
       </div>
@@ -180,7 +201,7 @@ function StatCard({ label, value, detail, sub }) {
 }
 
 // ── Linha da agenda com hover + reagendar ────────────────────────────
-function AgendaRow({ appt, onNav, isLast, onReagendar }) {
+function AgendaRow({ appt, onNav, isLast, onReagendar, onProntuario }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -238,6 +259,7 @@ function AgendaRow({ appt, onNav, isLast, onReagendar }) {
           {Icon.cat} Iniciar triagem
         </button>
         <button
+          onClick={() => onProntuario(appt)}
           className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-[12px] font-medium lift"
           style={{ border: '1px solid var(--hair)', color: 'var(--ink-2)' }}>
           {Icon.file} Prontuário
@@ -316,7 +338,7 @@ function DashboardPage({ onNav }) {
   }, []);
 
   // Agenda real do dia (mesmo endpoint da página Agenda; escopo = médico do JWT).
-  useEffect(() => {
+  function carregarAgenda() {
     const STATUS = {
       confirmado:     ['sage',    'Confirmado'],
       aguardando:     ['neutral', 'Aguardando'],
@@ -329,6 +351,7 @@ function DashboardPage({ onNav }) {
       d.getMonth() === hoje.getMonth() &&
       d.getDate() === hoje.getDate();
 
+    setLoadingAg(true);
     api.getAgendamentos()
       .then((data) => {
         const doDia = (data || [])
@@ -338,19 +361,29 @@ function DashboardPage({ onNav }) {
           .map((a) => {
             const [tone, label] = STATUS[a.status] || ['neutral', a.status];
             return {
+              // campos de exibição
               time: a._d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
               name: a.titulo,
               type: a.tipo || '—',
               age: '',
               status: tone,
               statusLabel: label,
+              // campos crus (para ações reais)
+              id: a.id,
+              paciente_id: a.paciente_id != null ? a.paciente_id : null,
+              titulo: a.titulo,
+              tipo: a.tipo,
+              statusRaw: a.status,
+              data_hora: a.data_hora,
             };
           });
         setAppointments(doDia);
       })
       .catch((err) => console.error('Erro ao carregar agenda do dia:', err))
       .finally(() => setLoadingAg(false));
-  }, []);
+  }
+
+  useEffect(() => { carregarAgenda(); }, []);
 
   return (
     <div className="anim-fade-in space-y-5">
@@ -437,6 +470,7 @@ function DashboardPage({ onNav }) {
               onNav={onNav}
               isLast={i === appointments.length - 1}
               onReagendar={(appt) => setModalReagendar(appt)}
+              onProntuario={(appt) => onNav('pacientes', appt.paciente_id ? { pacienteId: appt.paciente_id } : null)}
             />
           ))}
         </div>
@@ -460,6 +494,7 @@ function DashboardPage({ onNav }) {
         <ModalReagendar
           appt={modalReagendar}
           onClose={() => setModalReagendar(null)}
+          onSaved={carregarAgenda}
         />
       )}
     </div>

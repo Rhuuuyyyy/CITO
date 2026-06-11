@@ -16,6 +16,7 @@ class AgendamentoItem:
     tipo: str | None
     data_hora: datetime
     status: str
+    paciente_id: int | None = None
 
 
 class AgendamentoRepository:
@@ -28,7 +29,7 @@ class AgendamentoRepository:
         result = await self._session.execute(
             text(
                 """
-                SELECT id, titulo, tipo, data_hora, status
+                SELECT id, titulo, tipo, data_hora, status, paciente_id
                 FROM   tb_agendamentos
                 WHERE  usuario_id = :usuario_id
                   AND  status <> 'cancelado'
@@ -45,6 +46,7 @@ class AgendamentoRepository:
                 tipo=cast("str | None", r["tipo"]),
                 data_hora=cast(datetime, r["data_hora"]),
                 status=str(r["status"]),
+                paciente_id=int(r["paciente_id"]) if r["paciente_id"] is not None else None,
             )
             for r in rows
         ]
@@ -67,7 +69,7 @@ class AgendamentoRepository:
                 ) VALUES (
                     :paciente_id, :usuario_id, :titulo, :tipo, :data_hora, :status
                 )
-                RETURNING id, titulo, tipo, data_hora, status
+                RETURNING id, titulo, tipo, data_hora, status, paciente_id
                 """
             ),
             {
@@ -88,4 +90,58 @@ class AgendamentoRepository:
             tipo=cast("str | None", row["tipo"]),
             data_hora=cast(datetime, row["data_hora"]),
             status=str(row["status"]),
+            paciente_id=int(row["paciente_id"]) if row["paciente_id"] is not None else None,
         )
+
+    async def update(
+        self,
+        *,
+        agendamento_id: int,
+        usuario_id: int,
+        titulo: str,
+        tipo: str | None,
+        data_hora: datetime,
+        status: str,
+    ) -> AgendamentoItem | None:
+        """Update an appointment owned by the doctor. Returns None if not found."""
+        result = await self._session.execute(
+            text(
+                """
+                UPDATE tb_agendamentos
+                SET    titulo = :titulo, tipo = :tipo,
+                       data_hora = :data_hora, status = :status
+                WHERE  id = :id AND usuario_id = :usuario_id
+                RETURNING id, titulo, tipo, data_hora, status, paciente_id
+                """
+            ),
+            {
+                "id": agendamento_id,
+                "usuario_id": usuario_id,
+                "titulo": titulo,
+                "tipo": tipo,
+                "data_hora": data_hora,
+                "status": status,
+            },
+        )
+        row = result.mappings().first()
+        if row is None:
+            return None
+        return AgendamentoItem(
+            id=int(row["id"]),
+            titulo=str(row["titulo"]),
+            tipo=cast("str | None", row["tipo"]),
+            data_hora=cast(datetime, row["data_hora"]),
+            status=str(row["status"]),
+            paciente_id=int(row["paciente_id"]) if row["paciente_id"] is not None else None,
+        )
+
+    async def delete(self, *, agendamento_id: int, usuario_id: int) -> bool:
+        """Hard-delete an appointment owned by the doctor. True if a row went."""
+        result = await self._session.execute(
+            text(
+                "DELETE FROM tb_agendamentos WHERE id = :id AND usuario_id = :uid "
+                "RETURNING id"
+            ),
+            {"id": agendamento_id, "uid": usuario_id},
+        )
+        return result.first() is not None

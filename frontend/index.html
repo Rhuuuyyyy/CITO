@@ -26,6 +26,8 @@
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Geração do laudo PDF (JS puro, compartilhado entre Triagem e Pacientes) -->
+  <script src="src/lib/laudo.js"></script>
   <style>
     :root {
       /* CITO tokens — strictly black & white */
@@ -216,6 +218,7 @@
   <script type="text/babel" data-presets="react" src="src/pages/Agenda.jsx"></script>
   <script type="text/babel" data-presets="react" src="src/pages/Pacientes.jsx"></script>
   <script type="text/babel" data-presets="react" src="src/pages/Config.jsx"></script>
+  <script type="text/babel" data-presets="react" src="src/pages/Usuarios.jsx"></script>
   <script type="text/babel" data-presets="react" src="src/pages/Triagem.jsx"></script>
   <script type="text/babel" data-presets="react" src="src/pages/Login.jsx"></script>
 

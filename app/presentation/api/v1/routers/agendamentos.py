@@ -6,12 +6,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.use_cases.create_agendamento import CreateAgendamentoUseCase
 from app.application.use_cases.get_agendamentos import GetAgendamentosUseCase
+from app.application.use_cases.manage_agendamentos import (
+    DeleteAgendamentoUseCase,
+    UpdateAgendamentoUseCase,
+)
 from app.db.database import get_db_session
 from app.interfaces.api.dependencies import AuthenticatedDoctor, get_current_doctor
 from app.interfaces.repositories.agendamento_repository import AgendamentoRepository
 from app.presentation.api.v1.schemas.agendamento import (
     AgendamentoCreateRequest,
     AgendamentoSchema,
+    AgendamentoUpdateRequest,
 )
 
 router = APIRouter(prefix="/agendamentos", tags=["Agenda"])
@@ -30,7 +35,8 @@ async def list_agendamentos(
     items = await use_case.execute(usuario_id=doctor.usuario_id)
     return [
         AgendamentoSchema(
-            id=i.id, titulo=i.titulo, tipo=i.tipo, data_hora=i.data_hora, status=i.status
+            id=i.id, titulo=i.titulo, tipo=i.tipo, data_hora=i.data_hora,
+            status=i.status, paciente_id=i.paciente_id,
         )
         for i in items
     ]
@@ -58,5 +64,48 @@ async def create_agendamento(
     )
     return AgendamentoSchema(
         id=item.id, titulo=item.titulo, tipo=item.tipo,
-        data_hora=item.data_hora, status=item.status,
+        data_hora=item.data_hora, status=item.status, paciente_id=item.paciente_id,
+    )
+
+
+@router.patch(
+    "/{agendamento_id}",
+    response_model=AgendamentoSchema,
+    summary="Editar agendamento",
+)
+async def update_agendamento(
+    agendamento_id: int,
+    payload: AgendamentoUpdateRequest,
+    doctor: AuthenticatedDoctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db_session),
+) -> AgendamentoSchema:
+    use_case = UpdateAgendamentoUseCase(agendamentos=AgendamentoRepository(session))
+    item = await use_case.execute(
+        agendamento_id=agendamento_id,
+        usuario_id=doctor.usuario_id,
+        titulo=payload.titulo,
+        tipo=payload.tipo,
+        data_hora=payload.data_hora,
+        status=payload.status,
+    )
+    return AgendamentoSchema(
+        id=item.id, titulo=item.titulo, tipo=item.tipo,
+        data_hora=item.data_hora, status=item.status, paciente_id=item.paciente_id,
+    )
+
+
+@router.delete(
+    "/{agendamento_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir agendamento",
+)
+async def delete_agendamento(
+    agendamento_id: int,
+    doctor: AuthenticatedDoctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    use_case = DeleteAgendamentoUseCase(agendamentos=AgendamentoRepository(session))
+    await use_case.execute(
+        agendamento_id=agendamento_id,
+        usuario_id=doctor.usuario_id,
     )

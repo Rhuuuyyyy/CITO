@@ -11,3 +11,4 @@ class TokenLoginResponse(BaseModel):
     token_type: str = "Bearer"
     sessao_id: int
     usuario_id: int
+    tipo: str | None = None

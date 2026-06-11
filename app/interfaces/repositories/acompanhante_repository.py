@@ -48,9 +48,23 @@ class AcompanhanteRepository:
             )
         return acompanhante.model_copy(update={"id": int(row["id"])})
 
-    async def list_all(self) -> list[AcompanhanteListItem]:
+    async def list_by_doctor(self, *, usuario_id: int) -> list[AcompanhanteListItem]:
+        """Caregivers linked to a patient registered by the requesting doctor.
+
+        Scoped through ``pacientes.acompanhante_id`` so a doctor never sees the
+        caregivers (name/phone/email in clear) of another doctor's patients.
+        """
         result = await self._session.execute(
-            text("SELECT id, nome, telefone, email FROM acompanhantes ORDER BY nome")
+            text(
+                """
+                SELECT DISTINCT a.id, a.nome, a.telefone, a.email
+                FROM   acompanhantes a
+                JOIN   pacientes p ON p.acompanhante_id = a.id
+                WHERE  p.criado_por = :usuario_id
+                ORDER BY a.nome
+                """
+            ),
+            {"usuario_id": usuario_id},
         )
         return [
             AcompanhanteListItem(

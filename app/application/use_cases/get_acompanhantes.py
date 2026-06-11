@@ -11,5 +11,5 @@ class GetAcompanhantesUseCase:
     def __init__(self, acompanhantes: AcompanhanteRepository) -> None:
         self._acompanhantes = acompanhantes
 
-    async def execute(self) -> list[AcompanhanteListItem]:
-        return await self._acompanhantes.list_all()
+    async def execute(self, *, usuario_id: int) -> list[AcompanhanteListItem]:
+        return await self._acompanhantes.list_by_doctor(usuario_id=usuario_id)

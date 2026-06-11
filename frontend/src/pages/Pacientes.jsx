@@ -385,10 +385,15 @@ const ProntInfo = ({ label, valor }) => (
   </div>
 );
 
-function ModalProntuario({ paciente, onClose }) {
+function ModalProntuario({ paciente, onClose, onChanged }) {
   const [detalhe, setDetalhe] = useState(null);
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [arquivando, setArquivando] = useState(false);
+  const [excluindo, setExcluindo]   = useState(false); // modal de confirmação aberto
+  const [senhaDel, setSenhaDel]     = useState('');
+  const [erroDel, setErroDel]       = useState('');
+  const [delLoading, setDelLoading] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -401,10 +406,80 @@ function ModalProntuario({ paciente, onClose }) {
     });
   }, [paciente.id]);
 
+  const [imprimindo, setImprimindo] = useState(null); // avaliacao_id em impressão
+
   const limiar = paciente.sexo === 'M' ? 0.56 : 0.55;
   const fmtData = (s) => (s ? s.split('-').reverse().join('/') : '—');
   const labelDe = (lista, v) => (lista.find(([val]) => val === v) || [null, v])[1] || '—';
   const simNao = (b) => (b ? 'Sim' : 'Não');
+
+  // Reimprime o laudo de uma triagem já registrada, reaproveitando o mesmo
+  // gerador usado na Triagem (window.gerarLaudoPDF, em src/lib/laudo.jsx).
+  async function imprimirLaudo(avaliacaoId) {
+    setImprimindo(avaliacaoId);
+    try {
+      const av = await api.getAvaliacaoDetalhe(avaliacaoId);
+      const cat = (window.LAUDO && window.LAUDO.SINTOMA_DESCRICAO) || {};
+
+      // Reconstrói o objeto de respostas keyed pelo id curto do catálogo.
+      const respostas = {};
+      (av.sintomas || []).forEach((s) => {
+        const id = Object.keys(cat).find((k) => cat[k] === s.descricao);
+        if (id) respostas[id] = s.presente ? 1 : 0;
+      });
+
+      const hist = av.historico_familiar || {};
+      await window.gerarLaudoPDF({
+        nome: av.paciente_nome,
+        sexo: av.paciente_sexo,
+        dataNasc: av.paciente_data_nascimento,
+        acomp: {
+          nome: av.acompanhante_nome,
+          telefone: av.acompanhante_telefone,
+          email: av.acompanhante_email,
+        },
+        respostas,
+        historico: hist,
+        historicoOutros: hist.descricao_outros || '',
+        scoreOverride: av.score_final,
+      });
+    } catch (err) {
+      console.error('Erro ao reimprimir laudo:', err);
+      alert('Não foi possível gerar o PDF: ' + (err.message || 'erro desconhecido'));
+    } finally {
+      setImprimindo(null);
+    }
+  }
+
+  async function arquivarToggle() {
+    setArquivando(true);
+    try {
+      await api.setPacienteAtivo(paciente.id, !paciente.ativo);
+      onChanged && onChanged();
+    } catch (err) {
+      console.error('Erro ao arquivar/reativar:', err);
+      alert('Não foi possível alterar o status: ' + (err.message || 'erro'));
+    } finally {
+      setArquivando(false);
+    }
+  }
+
+  function abrirExcluir() { setExcluindo(true); setSenhaDel(''); setErroDel(''); }
+  function fecharExcluir() { if (!delLoading) { setExcluindo(false); setSenhaDel(''); setErroDel(''); } }
+  async function confirmarExcluir() {
+    if (!senhaDel) { setErroDel('Digite sua senha para confirmar.'); return; }
+    setDelLoading(true);
+    setErroDel('');
+    try {
+      await api.deletePaciente(paciente.id, senhaDel);
+      onChanged && onChanged();
+    } catch (err) {
+      console.error('Erro ao excluir paciente:', err);
+      setErroDel(err.message || 'Não foi possível excluir o paciente.');
+    } finally {
+      setDelLoading(false);
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 anim-fade-in"
@@ -515,6 +590,17 @@ function ModalProntuario({ paciente, onClose }) {
                         limiar {paciente.sexo === 'M' ? '♂' : '♀'} {limiar}
                       </span>
                     </div>
+                    <div className="mt-4 pt-3 flex justify-end" style={{ borderTop: '1px solid var(--hair-soft)' }}>
+                      <button onClick={() => imprimirLaudo(a.avaliacao_id)}
+                        disabled={imprimindo === a.avaliacao_id}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium lift"
+                        style={{ border: '1px solid var(--hair)', color: 'var(--ink)',
+                          opacity: imprimindo === a.avaliacao_id ? 0.6 : 1 }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--ink)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--hair)'; }}>
+                        {imprimindo === a.avaliacao_id ? 'Gerando…' : <>{Icon.print} Imprimir laudo PDF</>}
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -522,11 +608,58 @@ function ModalProntuario({ paciente, onClose }) {
           </div>
         </div>
 
-        <div className="flex items-center justify-end px-7 py-5"
+        <div className="flex items-center justify-between px-7 py-5"
           style={{ borderTop: '1px solid var(--hair-soft)' }}>
+          <div className="flex items-center gap-2">
+            <BtnGhost onClick={arquivarToggle}>
+              {arquivando ? '…' : (paciente.ativo ? 'Arquivar' : 'Reativar')}
+            </BtnGhost>
+            <button onClick={abrirExcluir}
+              className="px-4 py-2.5 rounded-2xl text-[13px] font-medium lift"
+              style={{ border: '1px solid var(--hair)', color: 'var(--rust)', background: 'transparent' }}>
+              Excluir
+            </button>
+          </div>
           <BtnGhost onClick={onClose}>Fechar</BtnGhost>
         </div>
       </div>
+
+      {/* Modal de confirmação de exclusão (cascata) — pede a senha do médico */}
+      {excluindo && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 anim-fade-in"
+          style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+          onClick={(e) => e.target === e.currentTarget && fecharExcluir()}>
+          <div className="w-full max-w-md rounded-3xl card-shadow anim-fade-up"
+            style={{ background: 'var(--surface)', border: '1px solid var(--hair)' }}>
+            <div className="px-7 pt-7 pb-5" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
+              <h2 className="font-display text-[22px] leading-none">Excluir paciente</h2>
+              <p className="text-[12.5px] mt-2" style={{ color: 'var(--muted)' }}>
+                Esta ação é <strong>permanente</strong>. <strong>{paciente.nome}</strong> e
+                {' '}<strong>todas as triagens e agendamentos</strong> vinculados serão apagados.
+                Para confirmar, digite a <strong>sua</strong> senha.
+              </p>
+            </div>
+            <div className="px-7 py-6">
+              <Field label="Sua senha" required>
+                <input className={`${inputCls} focus-ink`} style={inputStyle} type="password"
+                  placeholder="Senha" value={senhaDel} autoFocus
+                  onChange={(e) => { setSenhaDel(e.target.value); if (erroDel) setErroDel(''); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') confirmarExcluir(); }} />
+              </Field>
+              {erroDel && <p className="text-[12.5px] mt-3" style={{ color: 'var(--rust)' }}>{erroDel}</p>}
+            </div>
+            <div className="flex items-center justify-end gap-2 px-7 py-5"
+              style={{ borderTop: '1px solid var(--hair-soft)' }}>
+              <BtnGhost onClick={fecharExcluir}>Cancelar</BtnGhost>
+              <button onClick={confirmarExcluir} disabled={delLoading}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-[13px] font-medium lift"
+                style={{ background: 'var(--rust)', color: 'var(--on-ink)', opacity: delLoading ? 0.6 : 1 }}>
+                {delLoading ? 'Excluindo…' : 'Excluir definitivamente'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -534,17 +667,29 @@ function ModalProntuario({ paciente, onClose }) {
 // ═══════════════════════════════════════════════════════════════════════
 // PÁGINA PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════
-function PacientesPage({ usuario }) {
+function PacientesPage({ usuario, abrirPacienteId }) {
   const [q, setQ]             = useState('');
   const [modal, setModal]     = useState(false);
   const [pacientes, setPacientes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [prontuario, setProntuario] = useState(null);
+  const [mostrarArquivados, setMostrarArquivados] = useState(false);
+
+  // Abre direto o prontuário de um paciente (ex.: vindo do botão "Prontuário"
+  // na Visão geral). Busca o detalhe para montar o objeto mínimo do modal.
+  useEffect(() => {
+    if (!abrirPacienteId) return;
+    api.getPacienteDetalhe(abrirPacienteId)
+      .then((det) => {
+        if (det) setProntuario({ id: det.id, nome: det.nome, sexo: det.sexo, ativo: true });
+      })
+      .catch((err) => console.error('Erro ao abrir prontuário:', err));
+  }, [abrirPacienteId]);
 
   async function carregarPacientes(params) {
     setLoading(true);
     try {
-      const data = await api.getPacientes(params);
+      const data = await api.getPacientes({ ...params, incluir_inativos: mostrarArquivados });
       setPacientes((data.items || []).map(p => {
         const [y, m, d] = (p.data_nascimento || '').split('-');
         const score = p.ultimo_score != null ? Number(p.ultimo_score) : 0;
@@ -561,6 +706,7 @@ function PacientesPage({ usuario }) {
           risco:  p.recomenda_exame ? 'encaminhar' : 'baixo',
           score:  score,
           acomps: p.tem_acompanhante ? 1 : 0,
+          ativo:  p.ativo !== false,
         };
       }));
     } catch (err) {
@@ -579,7 +725,7 @@ function PacientesPage({ usuario }) {
       else carregarPacientes();
     }, 300);
     return () => clearTimeout(handle);
-  }, [q]);
+  }, [q, mostrarArquivados]);
 
   async function handleSalvar({ paciente: p, acompanhantes }) {
     const a = acompanhantes[0];
@@ -660,7 +806,9 @@ function PacientesPage({ usuario }) {
               className="w-full rounded-2xl pl-11 pr-4 py-3 text-[14px] outline-none focus-ink lift"
               style={inputStyle} />
           </div>
-          <BtnGhost>{Icon.chevronDown} Filtros</BtnGhost>
+          <BtnGhost onClick={() => setMostrarArquivados((v) => !v)}>
+            {mostrarArquivados ? 'Ocultar arquivados' : 'Mostrar arquivados'}
+          </BtnGhost>
           <BtnGhost onClick={exportarCSV}>{Icon.chevronDown} Exportar CSV</BtnGhost>
           <BtnPrimary onClick={() => setModal(true)}>{Icon.plus} Novo paciente</BtnPrimary>
         </div>
@@ -690,13 +838,22 @@ function PacientesPage({ usuario }) {
           <tbody>
             {pacientes.map((p, i) => (
               <tr key={i} className="lift"
-                style={{ borderBottom: i < pacientes.length - 1 ? '1px solid var(--hair-soft)' : 'none' }}
+                style={{ borderBottom: i < pacientes.length - 1 ? '1px solid var(--hair-soft)' : 'none',
+                  opacity: p.ativo ? 1 : 0.55 }}
                 onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--paper-2)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}>
                 <td className="px-5 py-4 font-mono text-[12px]" style={{ color: 'var(--subtle)' }}>
                   {String(i + 1).padStart(3, '0')}
                 </td>
-                <td className="px-5 py-4 text-[13.5px] font-medium">{p.nome}</td>
+                <td className="px-5 py-4 text-[13.5px] font-medium">
+                  {p.nome}
+                  {!p.ativo && (
+                    <span className="text-[10px] ml-2 px-2 py-0.5 rounded-full uppercase tracking-wider"
+                      style={{ background: 'var(--paper-2)', border: '1px solid var(--hair)', color: 'var(--subtle)' }}>
+                      Arquivado
+                    </span>
+                  )}
+                </td>
                 <td className="px-5 py-4 text-[12.5px] font-mono" style={{ color: 'var(--ink-2)' }}>{p.nasc}</td>
                 <td className="px-5 py-4 text-[12.5px] font-mono" style={{ color: 'var(--muted)' }}>{p.cpf}</td>
                 <td className="px-5 py-4 text-[12.5px] font-mono" style={{ color: 'var(--ink-2)' }}>{p.cel}</td>
@@ -746,6 +903,7 @@ function PacientesPage({ usuario }) {
         <ModalProntuario
           paciente={prontuario}
           onClose={() => setProntuario(null)}
+          onChanged={() => { setProntuario(null); carregarPacientes(); }}
         />
       )}
     </div>

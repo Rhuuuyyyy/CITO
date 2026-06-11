@@ -23,7 +23,7 @@ async def list_acompanhantes(
     session: AsyncSession = Depends(get_db_session),
 ) -> list[AcompanhanteListItemSchema]:
     use_case = GetAcompanhantesUseCase(acompanhantes=AcompanhanteRepository(session))
-    items = await use_case.execute()
+    items = await use_case.execute(usuario_id=doctor.usuario_id)
     return [
         AcompanhanteListItemSchema(
             id=item.id,

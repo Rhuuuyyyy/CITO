@@ -24,6 +24,7 @@ class PatientListItem:
     ultimo_score: float | None
     ultima_avaliacao: str | None
     recomenda_exame: bool | None
+    ativo: bool
 
 
 @dataclass(frozen=True)
@@ -76,6 +77,7 @@ class PatientReadRepository:
         usuario_id: int,
         nome_filter: str | None = None,
         cpf_hash_filter: str | None = None,
+        incluir_inativos: bool = False,
         limit: int = 50,
         offset: int = 0,
     ) -> list[PatientListItem]:
@@ -85,6 +87,8 @@ class PatientReadRepository:
             "limit": limit,
             "offset": offset,
         }
+        if not incluir_inativos:
+            conditions.append("p.ativo = TRUE")
         if nome_filter:
             conditions.append("p.nome ILIKE :nome_filter")
             params["nome_filter"] = f"%{nome_filter}%"
@@ -105,7 +109,8 @@ class PatientReadRepository:
                        (p.acompanhante_id IS NOT NULL) AS tem_acompanhante,
                        ult.score_final AS ultimo_score,
                        TO_CHAR(ult.data_avaliacao, 'YYYY-MM-DD') AS ultima_avaliacao,
-                       ult.recomenda_exame
+                       ult.recomenda_exame,
+                       p.ativo
                 FROM   pacientes p
                 LEFT JOIN acompanhantes ac ON ac.id = p.acompanhante_id
                 LEFT JOIN LATERAL (
@@ -136,6 +141,7 @@ class PatientReadRepository:
                 ultimo_score=float(r["ultimo_score"]) if r["ultimo_score"] is not None else None,
                 ultima_avaliacao=str(r["ultima_avaliacao"]) if r["ultima_avaliacao"] else None,
                 recomenda_exame=bool(r["recomenda_exame"]) if r["recomenda_exame"] is not None else None,
+                ativo=bool(r["ativo"]),
             )
             for r in rows
         ]
@@ -221,9 +227,12 @@ class PatientReadRepository:
         usuario_id: int,
         nome_filter: str | None = None,
         cpf_hash_filter: str | None = None,
+        incluir_inativos: bool = False,
     ) -> int:
         conditions = ["criado_por = :usuario_id"]
         params: dict[str, object] = {"usuario_id": usuario_id}
+        if not incluir_inativos:
+            conditions.append("ativo = TRUE")
         if nome_filter:
             conditions.append("nome ILIKE :nome_filter")
             params["nome_filter"] = f"%{nome_filter}%"

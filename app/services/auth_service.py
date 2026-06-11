@@ -126,16 +126,16 @@ class AuthService:
         *,
         email: str,
         senha_plain: str,
-    ) -> int | None:
+    ) -> tuple[int, str] | None:
         """Verify credentials against the DB using PostgreSQL native crypt().
 
-        Returns the usuario_id (INTEGER) if valid, or None if invalid.
-        NEVER log senha_plain.
+        Returns (usuario_id, tipo) if valid, or None if invalid. ``tipo`` is the
+        RBAC role from the DB ('admin' or 'medico'). NEVER log senha_plain.
         """
         result = await self._session.execute(
             text(
                 """
-                SELECT id
+                SELECT id, tipo
                 FROM usuarios
                 WHERE email = LOWER(:email)
                   AND senha = crypt(:senha, senha)
@@ -145,4 +145,6 @@ class AuthService:
             {"email": email, "senha": senha_plain},
         )
         row = result.mappings().first()
-        return int(cast(int, row["id"])) if row else None
+        if row is None:
+            return None
+        return int(cast(int, row["id"])), str(row["tipo"] or "medico")

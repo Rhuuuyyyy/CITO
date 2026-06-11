@@ -101,6 +101,72 @@ class PatientRepository:
         row = result.mappings().first()
         return self._row_to_patient(row) if row is not None else None
 
+    async def belongs_to(self, *, paciente_id: int, usuario_id: int) -> bool:
+        """True if the patient exists and was registered by this doctor."""
+        result = await self._session.execute(
+            text(
+                "SELECT 1 FROM tb_pacientes WHERE id = :id AND criado_por = :uid"
+            ),
+            {"id": paciente_id, "uid": usuario_id},
+        )
+        return result.first() is not None
+
+    async def set_ativo(
+        self, *, paciente_id: int, usuario_id: int, ativo: bool
+    ) -> bool:
+        """Archive (ativo=FALSE) or restore (ativo=TRUE) a patient owned by the
+        doctor. Returns True if a row was updated."""
+        result = await self._session.execute(
+            text(
+                """
+                UPDATE tb_pacientes SET ativo = :ativo
+                WHERE id = :id AND criado_por = :uid
+                RETURNING id
+                """
+            ),
+            {"ativo": ativo, "id": paciente_id, "uid": usuario_id},
+        )
+        return result.first() is not None
+
+    async def delete_cascade(
+        self, *, paciente_id: int, usuario_id: int
+    ) -> bool:
+        """Permanently delete a patient and ALL dependent records.
+
+        Order matters (no ON DELETE CASCADE in the schema): children of each
+        evaluation → evaluations → appointments → the patient. The caller must
+        confirm ownership first; the final delete is also scoped by criado_por.
+        The acompanhante is intentionally left (it may be shared by other
+        patients). Runs inside the request transaction (rolls back on error).
+        """
+        sub = "SELECT id FROM tb_avaliacoes WHERE paciente_id = :pid"
+        for child in (
+            "respostas_checklist",
+            "tb_historico_familiar",
+            "tb_encaminhamentos",
+            "tb_log_analises",
+        ):
+            await self._session.execute(
+                text(f"DELETE FROM {child} WHERE avaliacao_id IN ({sub})"),
+                {"pid": paciente_id},
+            )
+        await self._session.execute(
+            text("DELETE FROM tb_avaliacoes WHERE paciente_id = :pid"),
+            {"pid": paciente_id},
+        )
+        await self._session.execute(
+            text("DELETE FROM tb_agendamentos WHERE paciente_id = :pid"),
+            {"pid": paciente_id},
+        )
+        result = await self._session.execute(
+            text(
+                "DELETE FROM tb_pacientes WHERE id = :pid AND criado_por = :uid "
+                "RETURNING id"
+            ),
+            {"pid": paciente_id, "uid": usuario_id},
+        )
+        return result.first() is not None
+
     def _row_to_patient(self, row: RowMapping) -> Patient:
         raw_escolaridade = cast("str | None", row["escolaridade"])
         raw_etnia = cast("str | None", row["etnia"])
