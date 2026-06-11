@@ -5,6 +5,10 @@ It is the ONLY file allowed to import from every other layer.
 """
 from __future__ import annotations
 
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
@@ -164,7 +168,24 @@ def create_app() -> FastAPI:
     async def health() -> dict[str, str]:
         return {"status": "ok", "service": settings.app_name}
 
-    return app
+    # ── Frontend (Adicionado para o Azure) ────────────────────────────────────
+    # Calcula o caminho para a pasta frontend (app/main.py -> app/ -> raiz -> frontend/)
+    FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
+    if FRONTEND_DIR.is_dir():
+        # 1. Rota raiz devolve o index.html
+        @app.get("/")
+        async def serve_index():
+            return FileResponse(FRONTEND_DIR / "index.html")
+
+        # 2. Catch-all: entrega o ficheiro real (css/js) ou o index (para rotas do React)
+        @app.get("/{full_path:path}")
+        async def catch_all(full_path: str):
+            file_path = FRONTEND_DIR / full_path
+            if file_path.is_file():
+                return FileResponse(file_path)
+            return FileResponse(FRONTEND_DIR / "index.html")
+        
+    return app
 
 app = create_app()
