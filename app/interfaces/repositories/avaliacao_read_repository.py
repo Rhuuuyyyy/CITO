@@ -56,6 +56,7 @@ class AvaliacaoFullDetail:
     paciente_sexo: str | None
     paciente_data_nascimento: str | None
     acompanhante_nome: str | None
+    acompanhante_relacao: str | None
     acompanhante_telefone: str | None
     acompanhante_email: str | None
     sintomas: list[SintomaRespostaItem]
@@ -132,10 +133,15 @@ class AvaliacaoReadRepository:
                        p.nome AS paciente_nome, p.sexo AS paciente_sexo,
                        TO_CHAR(p.data_nascimento, 'YYYY-MM-DD') AS data_nascimento,
                        ac.nome AS acomp_nome, ac.telefone AS acomp_telefone,
-                       ac.email AS acomp_email
+                       ac.email AS acomp_email,
+                       COALESCE(ta.grau_parentesco, p.grau_parentesco) AS acomp_relacao
                 FROM   avaliacoes a
+                JOIN   tb_avaliacoes ta ON ta.id = a.id
                 JOIN   pacientes  p ON p.id = a.paciente_id
-                LEFT JOIN acompanhantes ac ON ac.id = p.acompanhante_id
+                -- Acompanhante DESTA avaliação (modelo B); se nulo (avaliações
+                -- antigas), cai no acompanhante atual do paciente.
+                LEFT JOIN acompanhantes ac
+                       ON ac.id = COALESCE(ta.acompanhante_id, p.acompanhante_id)
                 WHERE  a.id = :avaliacao_id AND p.criado_por = :usuario_id
                 """
             ),
@@ -208,6 +214,7 @@ class AvaliacaoReadRepository:
                 str(h["data_nascimento"]) if h["data_nascimento"] else None
             ),
             acompanhante_nome=str(h["acomp_nome"]) if h["acomp_nome"] else None,
+            acompanhante_relacao=str(h["acomp_relacao"]) if h["acomp_relacao"] else None,
             acompanhante_telefone=(
                 str(h["acomp_telefone"]) if h["acomp_telefone"] else None
             ),

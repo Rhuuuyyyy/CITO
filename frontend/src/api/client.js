@@ -117,6 +117,7 @@ const api = {
   // ── Domain endpoints ─────────────────────────────────────────────────────
   getSintomas() { return this.get('/sintomas'); },
   getAcompanhantes() { return this.get('/acompanhantes'); },
+  createAcompanhante(body) { return this.post('/acompanhantes', body); },
 
   getPacientes(params) {
     const qs = new URLSearchParams();

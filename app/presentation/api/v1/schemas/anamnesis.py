@@ -43,6 +43,13 @@ class SubmitAnamnesisRequest(BaseModel):
 
     paciente_id: int = Field(ge=1, description="ID do paciente no banco")
     sessao_id: int = Field(ge=1, description="ID da sessão ativa do médico")
+    acompanhante_id: int | None = Field(
+        default=None, description="Acompanhante presente nesta avaliação (modelo B)"
+    )
+    grau_parentesco: str | None = Field(
+        default=None, max_length=40,
+        description="Relação do acompanhante com o paciente nesta avaliação",
+    )
     observacoes: str = Field(
         default="",
         max_length=2000,
@@ -108,6 +115,7 @@ class AvaliacaoDetalheResponse(BaseModel):
     paciente_sexo: str | None = None
     paciente_data_nascimento: str | None = None
     acompanhante_nome: str | None = None
+    acompanhante_relacao: str | None = None
     acompanhante_telefone: str | None = None
     acompanhante_email: str | None = None
     sintomas: list[SintomaRespostaDetalheSchema]

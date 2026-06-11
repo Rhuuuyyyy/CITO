@@ -193,8 +193,8 @@
 
     y += 2;
     secHeader('Dados do acompanhante');
-    campoGrid([['Nome', acomp.nome || '—'], ['Telefone', acomp.telefone || '—']]);
-    if (acomp.email) campoGrid([['E-mail', acomp.email]]);
+    campoGrid([['Nome', acomp.nome || '—'], ['Relação', acomp.relacao || '—']]);
+    campoGrid([['Telefone', acomp.telefone || '—'], ['E-mail', acomp.email || '—']]);
 
     y += 2;
     secHeader('Resultado do escore');

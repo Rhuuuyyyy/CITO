@@ -42,6 +42,29 @@ class AvaliacaoRepository:
             raise RuntimeError("Failed to create avaliacao — no id returned")
         return cast(int, row["id"])
 
+    async def set_acompanhante(
+        self,
+        *,
+        avaliacao_id: int,
+        acompanhante_id: int | None,
+        grau_parentesco: str | None = None,
+    ) -> None:
+        """Record who attended THIS evaluation and their relationship (model B).
+
+        No-op when acompanhante_id is None — so triagens without a caregiver
+        don't touch the columns (and don't fail if they aren't there yet).
+        Writes directly to tb_avaliacoes (the 'avaliacoes' view doesn't carry it).
+        """
+        if acompanhante_id is None:
+            return
+        await self._session.execute(
+            text(
+                "UPDATE tb_avaliacoes SET acompanhante_id = :aid, "
+                "grau_parentesco = :rel WHERE id = :id"
+            ),
+            {"aid": acompanhante_id, "rel": grau_parentesco, "id": avaliacao_id},
+        )
+
     async def open_log_analise(
         self,
         *,

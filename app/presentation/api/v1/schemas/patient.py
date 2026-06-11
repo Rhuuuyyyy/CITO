@@ -72,7 +72,7 @@ class PatientListItemSchema(BaseModel):
         default=None, description="Placeholder mascarado (só o hash existe no banco)"
     )
     telefone: str | None = Field(default=None, description="Telefone do acompanhante")
-    tem_acompanhante: bool = Field(default=False, description="Há acompanhante vinculado ao paciente")
+    qtd_acompanhantes: int = Field(default=0, description="Total de acompanhantes do paciente (cadastro + triagens)")
     ultimo_score: float | None = Field(default=None, description="Score da última avaliação finalizada")
     ultima_avaliacao: str | None = Field(default=None, description="Data da última avaliação (YYYY-MM-DD)")
     recomenda_exame: bool | None = Field(

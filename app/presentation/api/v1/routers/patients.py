@@ -109,7 +109,7 @@ async def list_patients(
                 data_nascimento=item.data_nascimento,
                 cpf_masked=CPF_MASK if item.cpf_hash else None,
                 telefone=item.telefone,
-                tem_acompanhante=item.tem_acompanhante,
+                qtd_acompanhantes=item.qtd_acompanhantes,
                 ultimo_score=item.ultimo_score,
                 ultima_avaliacao=item.ultima_avaliacao,
                 recomenda_exame=item.recomenda_exame,

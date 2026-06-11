@@ -86,6 +86,13 @@ class SubmitAnamnesisUseCase:
             diagnostico_previo_fxs=request.diagnostico_previo_fxs,
         )
 
+        # Step 1b — Record which caregiver attended this evaluation (model B).
+        await self._avaliacoes.set_acompanhante(
+            avaliacao_id=avaliacao_id,
+            acompanhante_id=request.acompanhante_id,
+            grau_parentesco=request.grau_parentesco,
+        )
+
         # Step 2 — Record when the doctor opened the checklist form
         await self._avaliacoes.open_log_analise(
             avaliacao_id=avaliacao_id,

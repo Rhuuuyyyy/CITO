@@ -56,6 +56,8 @@ def _to_dto(payload: SubmitAnamnesisRequest) -> SubmitAnamnesisDTO:
         sessao_id=payload.sessao_id,
         observacoes=payload.observacoes,
         diagnostico_previo_fxs=payload.diagnostico_previo_fxs,
+        acompanhante_id=payload.acompanhante_id,
+        grau_parentesco=payload.grau_parentesco,
         respostas=[
             ChecklistItemDTO(
                 sintoma_id=r.sintoma_id,
@@ -163,6 +165,7 @@ async def get_evaluation_detail(
         paciente_sexo=detail.paciente_sexo,
         paciente_data_nascimento=detail.paciente_data_nascimento,
         acompanhante_nome=detail.acompanhante_nome,
+        acompanhante_relacao=detail.acompanhante_relacao,
         acompanhante_telefone=detail.acompanhante_telefone,
         acompanhante_email=detail.acompanhante_email,
         sintomas=[

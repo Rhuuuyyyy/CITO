@@ -435,6 +435,7 @@ function ModalProntuario({ paciente, onClose, onChanged }) {
         dataNasc: av.paciente_data_nascimento,
         acomp: {
           nome: av.acompanhante_nome,
+          relacao: av.acompanhante_relacao,
           telefone: av.acompanhante_telefone,
           email: av.acompanhante_email,
         },
@@ -705,7 +706,7 @@ function PacientesPage({ usuario, abrirPacienteId }) {
             : '—',
           risco:  p.recomenda_exame ? 'encaminhar' : 'baixo',
           score:  score,
-          acomps: p.tem_acompanhante ? 1 : 0,
+          acomps: p.qtd_acompanhantes != null ? p.qtd_acompanhantes : 0,
           ativo:  p.ativo !== false,
         };
       }));

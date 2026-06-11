@@ -16,6 +16,12 @@ function calcIdade(dataNasc) {
   if (meses < 0 || (meses === 0 && hoje.getDate() < d)) anos--;
   return `${anos} anos`;
 }
+function fmtTel(v) {
+  return (v || '').replace(/\D/g, '').slice(0, 11)
+    .replace(/(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d)/, '$1-$2');
+}
+const RELACOES_ACOMP = ['Mãe', 'Pai', 'Avó', 'Avô', 'Tia', 'Tio', 'Irmã', 'Irmão', 'Cuidador(a)', 'Outro'];
 
 const SINTOMAS = [
   { id: "deficiencia_intelectual",    label: "Deficiência intelectual",      pesoM: 0.32, pesoF: 0.20 },
@@ -273,6 +279,9 @@ function TriagemPage({ onNav, usuario }) {
 
   const [paciente, setPaciente] = useState({ nome: '', dataNasc: '', sexo: '', cpf: '' });
   const [acomp, setAcomp]       = useState({ nome: '', relacao: '', telefone: '', email: '' });
+  const [acompId, setAcompId]   = useState(null); // id do acompanhante selecionado (modelo B)
+  const [novoAcomp, setNovoAcomp] = useState(null); // null = fechado; obj = form de cadastro aberto
+  const [salvandoAcomp, setSalvandoAcomp] = useState(false);
   const [respostas, setRespostas] = useState(Object.fromEntries(SINTOMAS.map((s) => [s.id, null])));
   const [sintomaIdMap, setSintomaIdMap] = useState({});
   const [historico, setHistorico] = useState({
@@ -330,6 +339,7 @@ function TriagemPage({ onNav, usuario }) {
       cpf: '',
     });
     setAcomp({ nome: '', relacao: '', telefone: p.telefone || '', email: '' });
+    setAcompId(null);
     setErrors({});
   }
 
@@ -341,13 +351,36 @@ function TriagemPage({ onNav, usuario }) {
       telefone: a.telefone || '',
       email: a.email || '',
     });
+    setAcompId(item.id || null);
     setErrors({});
+  }
+
+  async function salvarNovoAcomp() {
+    if (!novoAcomp || !novoAcomp.nome.trim()) return;
+    setSalvandoAcomp(true);
+    try {
+      const criado = await api.createAcompanhante({
+        nome: novoAcomp.nome.trim(),
+        telefone: novoAcomp.telefone.trim() || null,
+        email: novoAcomp.email.trim() || null,
+      });
+      setAcomp({ nome: criado.nome, relacao: '', telefone: criado.telefone || '', email: criado.email || '' });
+      setAcompId(criado.id);
+      setAcompsDb((prev) => [...prev, criado]);
+      setNovoAcomp(null);
+    } catch (err) {
+      console.error('Erro ao cadastrar acompanhante:', err);
+      alert('Não foi possível cadastrar o acompanhante: ' + (err.message || 'erro'));
+    } finally {
+      setSalvandoAcomp(false);
+    }
   }
 
   function limparPaciente() {
     setPacienteId(null);
     setPaciente({ nome: '', dataNasc: '', sexo: '', cpf: '' });
     setAcomp({ nome: '', relacao: '', telefone: '', email: '' });
+    setAcompId(null);
     setErrors({});
   }
 
@@ -418,6 +451,8 @@ function TriagemPage({ onNav, usuario }) {
         sessao_id: usuario.sessao_id,
         observacoes: '',
         diagnostico_previo_fxs: false,
+        acompanhante_id: acompId || null,
+        grau_parentesco: acomp.relacao || null,
         respostas: respostasArr,
         historico_familiar: {
           ...Object.fromEntries(HISTORICO_FAMILIAR.map(h => [h.id, !!historico[h.id]])),
@@ -443,7 +478,7 @@ function TriagemPage({ onNav, usuario }) {
       nome: paciente.nome,
       sexo: paciente.sexo,
       dataNasc: paciente.dataNasc,
-      acomp: { nome: acomp.nome, telefone: acomp.telefone, email: acomp.email },
+      acomp: { nome: acomp.nome, relacao: acomp.relacao, telefone: acomp.telefone, email: acomp.email },
       respostas,
       historico,
       historicoOutros: historico.descricao_outros,
@@ -519,17 +554,72 @@ function TriagemPage({ onNav, usuario }) {
               items={acompsItems}
               value=""
               onSelect={selecionarAcomp}
-              onClear={() => setAcomp({ nome: '', relacao: '', telefone: '', email: '' })}
+              onClear={() => { setAcomp({ nome: '', relacao: '', telefone: '', email: '' }); setAcompId(null); }}
             />
           </Field>
 
+          {/* Cadastrar um acompanhante novo na hora */}
+          {!novoAcomp && (
+            <button type="button"
+              onClick={() => setNovoAcomp({ nome: '', telefone: '', email: '' })}
+              className="mt-2 text-[12.5px] font-medium lift inline-flex items-center gap-1"
+              style={{ color: 'var(--ink)' }}>
+              {Icon.plus} Cadastrar novo acompanhante
+            </button>
+          )}
+
+          {novoAcomp && (
+            <div className="mt-3 rounded-2xl p-5 space-y-3"
+              style={{ background: 'var(--paper-2)', border: '1px solid var(--hair)' }}>
+              <div className="text-[12.5px] font-medium" style={{ color: 'var(--ink)' }}>Novo acompanhante</div>
+              <Field label="Nome completo" required>
+                <input className={`${inputCls} focus-ink`} style={inputStyle} type="text"
+                  placeholder="Nome do acompanhante" value={novoAcomp.nome}
+                  onChange={(e) => setNovoAcomp({ ...novoAcomp, nome: e.target.value })} />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Telefone">
+                  <input className={`${inputCls} focus-ink font-mono`} style={inputStyle} type="tel"
+                    placeholder="(00) 9 0000-0000" value={novoAcomp.telefone}
+                    onChange={(e) => setNovoAcomp({ ...novoAcomp, telefone: fmtTel(e.target.value) })} />
+                </Field>
+                <Field label="E-mail">
+                  <input className={`${inputCls} focus-ink`} style={inputStyle} type="email"
+                    placeholder="email@exemplo.com" value={novoAcomp.email}
+                    onChange={(e) => setNovoAcomp({ ...novoAcomp, email: e.target.value })} />
+                </Field>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <BtnGhost onClick={() => setNovoAcomp(null)}>Cancelar</BtnGhost>
+                <BtnPrimary onClick={salvarNovoAcomp} disabled={salvandoAcomp || !novoAcomp.nome.trim()}>
+                  {salvandoAcomp ? 'Salvando…' : <>{Icon.check} Salvar acompanhante</>}
+                </BtnPrimary>
+              </div>
+            </div>
+          )}
+
           {acomp.nome && (
-            <div className="mt-4 rounded-2xl px-5 py-4"
+            <div className="mt-4 rounded-2xl px-5 py-4 space-y-4"
               style={{ background: 'var(--paper-2)', border: '1px solid var(--hair-soft)' }}>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
                 <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Nome</span><p>{acomp.nome}</p></div>
                 {acomp.telefone && <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Telefone</span><p className="font-mono">{acomp.telefone}</p></div>}
                 {acomp.email && <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>E-mail</span><p>{acomp.email}</p></div>}
+              </div>
+              <div>
+                <span className="text-[10.5px] uppercase tracking-wider block mb-2" style={{ color: 'var(--subtle)' }}>Relação com o paciente</span>
+                <div className="flex flex-wrap gap-2">
+                  {RELACOES_ACOMP.map((r) => (
+                    <button key={r} type="button"
+                      onClick={() => setAcomp((a) => ({ ...a, relacao: r }))}
+                      className="px-3 py-1.5 rounded-full text-[12px] font-medium lift"
+                      style={{
+                        background: acomp.relacao === r ? 'var(--ink)' : 'var(--surface)',
+                        color: acomp.relacao === r ? 'var(--on-ink)' : 'var(--ink-2)',
+                        border: acomp.relacao === r ? '1px solid var(--ink)' : '1px solid var(--hair)',
+                      }}>{r}</button>
+                  ))}
+                </div>
               </div>
             </div>
           )}

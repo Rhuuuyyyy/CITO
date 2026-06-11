@@ -20,7 +20,7 @@ class PatientListItem:
     data_nascimento: str | None
     cpf_hash: str | None
     telefone: str | None
-    tem_acompanhante: bool
+    qtd_acompanhantes: int
     ultimo_score: float | None
     ultima_avaliacao: str | None
     recomenda_exame: bool | None
@@ -106,7 +106,19 @@ class PatientReadRepository:
                        TO_CHAR(p.data_nascimento, 'YYYY-MM-DD') AS data_nascimento,
                        p.cpf_hash,
                        ac.telefone,
-                       (p.acompanhante_id IS NOT NULL) AS tem_acompanhante,
+                       -- Total de acompanhantes DISTINTOS do paciente: o do
+                       -- cadastro + os registrados em cada triagem (modelo B).
+                       (
+                         SELECT COUNT(DISTINCT u.ac) FROM (
+                           SELECT av.acompanhante_id AS ac
+                           FROM   tb_avaliacoes av
+                           WHERE  av.paciente_id = p.id AND av.acompanhante_id IS NOT NULL
+                           UNION
+                           SELECT tp.acompanhante_id
+                           FROM   tb_pacientes tp
+                           WHERE  tp.id = p.id AND tp.acompanhante_id IS NOT NULL
+                         ) u
+                       ) AS qtd_acompanhantes,
                        ult.score_final AS ultimo_score,
                        TO_CHAR(ult.data_avaliacao, 'YYYY-MM-DD') AS ultima_avaliacao,
                        ult.recomenda_exame,
@@ -137,7 +149,7 @@ class PatientReadRepository:
                 data_nascimento=str(r["data_nascimento"]) if r["data_nascimento"] else None,
                 cpf_hash=str(r["cpf_hash"]) if r["cpf_hash"] else None,
                 telefone=str(r["telefone"]) if r["telefone"] else None,
-                tem_acompanhante=bool(r["tem_acompanhante"]),
+                qtd_acompanhantes=int(r["qtd_acompanhantes"]) if r["qtd_acompanhantes"] is not None else 0,
                 ultimo_score=float(r["ultimo_score"]) if r["ultimo_score"] is not None else None,
                 ultima_avaliacao=str(r["ultima_avaliacao"]) if r["ultima_avaliacao"] else None,
                 recomenda_exame=bool(r["recomenda_exame"]) if r["recomenda_exame"] is not None else None,
@@ -163,11 +175,8 @@ class PatientReadRepository:
                        p.prematuro, p.idade_gestacional_semanas, p.peso_nascimento_gramas,
                        p.escolaridade, p.tem_diagnostico_autismo, p.tem_diagnostico_tdah,
                        p.outras_comorbidades, p.medicamentos_uso,
-                       p.diagnostico_confirmado_fxs, p.grau_parentesco,
-                       ac.id AS acomp_id, ac.nome AS acomp_nome,
-                       ac.telefone AS acomp_telefone, ac.email AS acomp_email
+                       p.diagnostico_confirmado_fxs
                 FROM   pacientes p
-                LEFT JOIN acompanhantes ac ON ac.id = p.acompanhante_id
                 WHERE  p.id = :paciente_id AND p.criado_por = :usuario_id
                 """
             ),
@@ -177,17 +186,41 @@ class PatientReadRepository:
         if r is None:
             return None
 
-        acompanhantes: list[AcompanhanteDetail] = []
-        if r["acomp_id"] is not None:
-            acompanhantes.append(
-                AcompanhanteDetail(
-                    id=int(r["acomp_id"]),
-                    nome=str(r["acomp_nome"]) if r["acomp_nome"] else "—",
-                    relacao=str(r["grau_parentesco"]) if r["grau_parentesco"] else None,
-                    telefone=str(r["acomp_telefone"]) if r["acomp_telefone"] else None,
-                    email=str(r["acomp_email"]) if r["acomp_email"] else None,
-                )
+        # TODOS os acompanhantes distintos do paciente: o do cadastro +
+        # os registrados em cada triagem (modelo B). A relação (grau_parentesco)
+        # do cadastro tem prioridade sobre a das avaliações para o mesmo id.
+        acomp_rows = await self._session.execute(
+            text(
+                """
+                SELECT DISTINCT ON (ac.id)
+                       ac.id, ac.nome, ac.telefone, ac.email, src.relacao
+                FROM (
+                    SELECT tp.acompanhante_id AS acomp_id,
+                           tp.grau_parentesco AS relacao, 0 AS prio
+                    FROM   tb_pacientes tp
+                    WHERE  tp.id = :paciente_id AND tp.acompanhante_id IS NOT NULL
+                    UNION ALL
+                    SELECT av.acompanhante_id, av.grau_parentesco, 1 AS prio
+                    FROM   tb_avaliacoes av
+                    WHERE  av.paciente_id = :paciente_id
+                      AND  av.acompanhante_id IS NOT NULL
+                ) src
+                JOIN acompanhantes ac ON ac.id = src.acomp_id
+                ORDER BY ac.id, src.prio
+                """
+            ),
+            {"paciente_id": paciente_id},
+        )
+        acompanhantes: list[AcompanhanteDetail] = [
+            AcompanhanteDetail(
+                id=int(ar["id"]),
+                nome=str(ar["nome"]) if ar["nome"] else "—",
+                relacao=str(ar["relacao"]) if ar["relacao"] else None,
+                telefone=str(ar["telefone"]) if ar["telefone"] else None,
+                email=str(ar["email"]) if ar["email"] else None,
             )
+            for ar in acomp_rows.mappings().all()
+        ]
 
         def _num(v: object) -> int | None:
             return int(v) if v is not None else None  # type: ignore[arg-type]

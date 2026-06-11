@@ -37,5 +37,7 @@ class SubmitAnamnesisDTO:
     sessao_id: int
     observacoes: str
     diagnostico_previo_fxs: bool
+    acompanhante_id: int | None = None
+    grau_parentesco: str | None = None
     respostas: list[ChecklistItemDTO] = field(default_factory=list)
     historico_familiar: HistoricoFamiliarDTO = field(default_factory=HistoricoFamiliarDTO)
