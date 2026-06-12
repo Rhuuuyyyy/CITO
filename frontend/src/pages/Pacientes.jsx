@@ -839,7 +839,7 @@ function PacientesPage({ usuario, abrirPacienteId }) {
       </Card>
 
       {/* Tabela */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-x-auto">
         {loading && (
           <div className="px-6 py-8 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
             Carregando pacientes…
