@@ -6,7 +6,7 @@
 // Configure the backend URL here (default: local uvicorn). The backend must
 // allow this page's origin in CORS_ORIGINS.
 // ═══════════════════════════════════════════════════════════════════════
-const API_BASE = (window.CITO_API_BASE || 'http://localhost:8000/api/v1');
+const API_BASE = (/api/v1);
 
 const api = {
   _token: null,
@@ -135,6 +135,8 @@ const api = {
   getPacienteDetalhe(id) { return this.get('/pacientes/' + id); },
   setPacienteAtivo(id, ativo) { return this._request('PATCH', '/pacientes/' + id, { ativo }); },
   deletePaciente(id, senha) { return this._request('DELETE', '/pacientes/' + id, { senha }); },
+  uploadFotoPaciente(id, base64) { return this.post('/pacientes/' + id + '/foto', { foto_base64: base64 }); },
+  deleteFotoPaciente(id) { return this._request('DELETE', '/pacientes/' + id + '/foto'); },
   getHistorico(pacienteId) { return this.get('/pacientes/' + pacienteId + '/historico'); },
 
   createAvaliacao(body) { return this.post('/avaliacoes', body); },

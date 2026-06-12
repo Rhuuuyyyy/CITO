@@ -1,7 +1,11 @@
 """HTTP router for patient registration and listing."""
 from __future__ import annotations
 
+import base64
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.application.use_cases.get_patient_detail import GetPatientDetailUseCase
@@ -28,6 +32,13 @@ from app.presentation.api.v1.schemas.patient import (
     PatientResponse,
     PatientSetAtivoRequest,
 )
+
+# Diretório de uploads: <projeto>/frontend/assets/uploads/
+_UPLOAD_DIR = Path(__file__).resolve().parents[5] / "frontend" / "assets" / "uploads"
+
+
+class FotoUploadRequest(BaseModel):
+    foto_base64: str
 
 router = APIRouter(prefix="/pacientes", tags=["Pacientes"])
 
@@ -215,3 +226,59 @@ async def delete_patient(
         usuario_id=doctor.usuario_id,
         senha=payload.senha,
     )
+    # Remove a foto do paciente se existir
+    foto_path = _UPLOAD_DIR / f"paciente_{paciente_id}.jpg"
+    if foto_path.exists():
+        foto_path.unlink()
+
+
+@router.post(
+    "/{paciente_id}/foto",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Upload de foto do paciente (salva em assets/uploads/)",
+)
+async def upload_foto_paciente(
+    paciente_id: int,
+    payload: FotoUploadRequest,
+    doctor: AuthenticatedDoctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    use_case = GetPatientDetailUseCase(patients=PatientReadRepository(session))
+    detail = await use_case.execute(paciente_id=paciente_id, usuario_id=doctor.usuario_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
+
+    b64 = payload.foto_base64
+    if "," in b64:
+        b64 = b64.split(",", 1)[1]
+
+    try:
+        img_bytes = base64.b64decode(b64)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="foto_base64 inválido.",
+        ) from exc
+
+    _UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    (_UPLOAD_DIR / f"paciente_{paciente_id}.jpg").write_bytes(img_bytes)
+
+
+@router.delete(
+    "/{paciente_id}/foto",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Remover foto do paciente",
+)
+async def delete_foto_paciente(
+    paciente_id: int,
+    doctor: AuthenticatedDoctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    use_case = GetPatientDetailUseCase(patients=PatientReadRepository(session))
+    detail = await use_case.execute(paciente_id=paciente_id, usuario_id=doctor.usuario_id)
+    if detail is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
+
+    foto_path = _UPLOAD_DIR / f"paciente_{paciente_id}.jpg"
+    if foto_path.exists():
+        foto_path.unlink()
