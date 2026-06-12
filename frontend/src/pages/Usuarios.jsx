@@ -99,7 +99,7 @@ function UsuariosPage({ usuario }) {
   }
 
   return (
-    <div className="anim-fade-in space-y-5 max-w-4xl">
+    <div className="anim-fade-in space-y-5">
 
       {/* Formulário de cadastro */}
       <Card className="p-6">
@@ -148,7 +148,7 @@ function UsuariosPage({ usuario }) {
       </Card>
 
       {/* Lista de usuários */}
-      <Card className="overflow-hidden">
+      <Card className="overflow-x-auto">
         {loading && (
           <div className="px-6 py-8 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
             Carregando usuários…

@@ -1,4 +1,4 @@
-const { useState, useEffect, useMemo } = React;
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
 // ═══════════════════════════════════════════════════════════════════════
 // ICONS — thin, fluid stroke matching feline elegance
