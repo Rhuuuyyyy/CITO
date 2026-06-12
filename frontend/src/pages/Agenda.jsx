@@ -221,7 +221,6 @@ function AgendaPage({ usuario }) {
             <div className="text-[10.5px] font-medium uppercase tracking-[0.16em]" style={{ color: 'var(--muted)' }}>Agendamentos</div>
             <h3 className="font-display text-[26px] leading-none mt-1">Próximas consultas</h3>
           </div>
-          <BtnGhost onClick={() => window.print()}>{Icon.print} Imprimir</BtnGhost>
         </div>
         <div className="p-6">
           {loading && <p className="text-[13px]" style={{ color: 'var(--muted)' }}>Carregando agenda…</p>}

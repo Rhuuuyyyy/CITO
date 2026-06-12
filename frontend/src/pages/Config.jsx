@@ -379,6 +379,37 @@ function ParametrosScoreSection({ onBack }) {
   );
 }
 
+// ── Modelos impressos (placeholder) ─────────────────────────────────
+function ModelosImpressosSection({ onBack }) {
+  return (
+    <div className="anim-fade-in space-y-6">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack}
+          className="w-9 h-9 rounded-full flex items-center justify-center lift"
+          style={{ border: '1px solid var(--hair)', color: 'var(--muted)' }}>
+          {Icon.chevronLeft}
+        </button>
+        <div>
+          <h2 className="font-display text-[28px] leading-none">Modelos de impressos</h2>
+          <p className="text-[13px] mt-1" style={{ color: 'var(--muted)' }}>Receitas, laudos e atestados médicos</p>
+        </div>
+      </div>
+
+      <div className="rounded-3xl p-8 flex flex-col items-center justify-center text-center"
+        style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)', minHeight: 220 }}>
+        <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
+          style={{ background: 'var(--paper-2)' }}>
+          {Icon.print}
+        </div>
+        <h3 className="font-display text-[20px] leading-tight mb-2">Em desenvolvimento</h3>
+        <p className="text-[13px] max-w-sm" style={{ color: 'var(--muted)' }}>
+          A gestão de modelos de impressos estará disponível em breve.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // PÁGINA PRINCIPAL DE CONFIG
 // ═══════════════════════════════════════════════════════════════════════
