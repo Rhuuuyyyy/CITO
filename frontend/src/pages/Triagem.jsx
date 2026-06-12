@@ -67,6 +67,21 @@ const SINTOMA_DESCRICAO = {
   agressividade:             'Agressividade',
 };
 
+const SINTOMA_INFO = {
+  deficiencia_intelectual:   'Comprometimento cognitivo com QI tipicamente abaixo de 70. Na SXF varia de leve a moderado e é o achado de maior peso diagnóstico — presente na maioria dos meninos e em cerca de 1/3 das meninas afetadas.',
+  face_alongada_orelhas:     'Face comprida com mandíbula proeminente e orelhas grandes ou salientes. Fenótipo clássico presente em ~80% dos meninos com SXF; menos evidente em meninas e em crianças pequenas.',
+  macroorquidismo:           'Volume testicular superior a 25 mL no adulto afetado. Presente em até 80% dos homens com SXF após a puberdade; não é avaliável antes dela e ausente no sexo feminino.',
+  hipermobilidade_articular: 'Frouxidão ligamentar com hiperextensão de articulações, especialmente dedos, joelhos e cotovelos. Decorre de alterações no tecido conjuntivo causadas pela deficiência de FMRP.',
+  dificuldades_aprendizagem: 'Déficits específicos em leitura, escrita ou matemática com inteligência preservada ou levemente reduzida. Particularmente relevante como preditor diagnóstico em meninas.',
+  deficit_atencao:           'Dificuldade de manutenção do foco, impulsividade ou desatenção persistente. Presente em ~80% dos meninos e ~30% das meninas com SXF; frequentemente co-ocorre com hiperatividade.',
+  movimentos_repetitivos:    'Estereotipias motoras como agitar as mãos (hand-flapping), balançar o corpo ou morder as mãos. Podem ser gatilhadas por excitação emocional ou sobrecarga sensorial.',
+  atraso_fala:               'Início tardio da linguagem expressiva com dificuldade na formação de frases. Em meninos, a fala pode ser rápida, repetitiva e com perseveração de temas (palilalia).',
+  hiperatividade:            'Nível de atividade motora excessivo e dificuldade em permanecer quieto. Costuma ser um dos primeiros sinais observados pelos pais; frequentemente leva ao diagnóstico inicial de TDAH.',
+  evita_contato_visual:      'Tendência a desviar o olhar durante interações sociais. Expressão de ansiedade social elevada, característica central da SXF, especialmente em ambientes novos ou com desconhecidos.',
+  evita_contato_fisico:      'Sensibilidade tátil elevada com rejeição a toque inesperado ou abraços. Parte do perfil de hipersensibilidade sensorial típico da síndrome; pode dificultar o exame físico.',
+  agressividade:             'Episódios de comportamento agressivo verbal ou físico, geralmente associados a frustração, sobrecarga sensorial ou dificuldade de regulação emocional — não hostilidade intencional.',
+};
+
 // ── STEP INDICATOR ──────────────────────────────────────────────────
 function StepIndicator({ current }) {
   return (
@@ -277,6 +292,7 @@ function TriagemPage({ onNav, usuario }) {
   const [salvando, setSalvando] = useState(false);
   const [modalResultado, setModalResultado] = useState(false);
 
+  const [infoAtivo, setInfoAtivo] = useState(null); // id do sintoma com tooltip aberto
   const [paciente, setPaciente] = useState({ nome: '', dataNasc: '', sexo: '', cpf: '' });
   const [acomp, setAcomp]       = useState({ nome: '', relacao: '', telefone: '', email: '' });
   const [acompId, setAcompId]   = useState(null); // id do acompanhante selecionado (modelo B)
@@ -720,22 +736,54 @@ function TriagemPage({ onNav, usuario }) {
             <div>
               {sintomasFiltrados.map((s, idx) => {
                 const resp = respostas[s.id];
-                const peso = paciente.sexo === 'M' ? s.pesoM : s.pesoF;
+                const ativo = infoAtivo === s.id;
                 return (
-                  <div key={s.id} className="flex items-center justify-between px-5 py-4 lift"
+                  <div key={s.id} className="flex items-start justify-between px-5 py-4 lift"
                     style={{
                       borderBottom: idx < sintomasFiltrados.length - 1 ? '1px solid var(--hair-soft)' : 'none',
                       background: resp === 1 ? 'var(--hover-tint)' : 'transparent',
                     }}>
                     <div className="flex-1 pr-3">
-                      <div className="flex items-baseline gap-3">
+                      <div className="flex items-center gap-2.5">
                         <span className="text-[11px] font-mono num-tabular w-5 flex-shrink-0" style={{ color: 'var(--subtle)' }}>
                           {String(idx + 1).padStart(2, '0')}
                         </span>
                         <span className="text-[13.5px]" style={{ color: 'var(--ink)' }}>{s.label}</span>
+                        <button
+                          type="button"
+                          onMouseEnter={() => setInfoAtivo(s.id)}
+                          onMouseLeave={() => setInfoAtivo(null)}
+                          onFocus={() => setInfoAtivo(s.id)}
+                          onBlur={() => setInfoAtivo(null)}
+                          className="flex-shrink-0 w-[17px] h-[17px] rounded-full flex items-center justify-center"
+                          style={{
+                            border: `1px solid ${ativo ? 'var(--ink)' : 'var(--hair)'}`,
+                            color: ativo ? 'var(--ink)' : 'var(--subtle)',
+                            fontSize: '9px',
+                            fontStyle: 'italic',
+                            fontWeight: 600,
+                            transition: 'border-color 0.15s ease, color 0.15s ease',
+                            cursor: 'default',
+                          }}>
+                          i
+                        </button>
                       </div>
+                      {ativo && (
+                        <div className="mt-2 ml-[28px] rounded-xl px-3 py-2.5 anim-fade-in"
+                          style={{
+                            background: 'var(--paper-2)',
+                            borderLeft: '2px solid var(--hair)',
+                            borderTop: '1px solid var(--hair-soft)',
+                            borderRight: '1px solid var(--hair-soft)',
+                            borderBottom: '1px solid var(--hair-soft)',
+                          }}>
+                          <p className="text-[11.5px] leading-relaxed" style={{ color: 'var(--muted)' }}>
+                            {SINTOMA_INFO[s.id]}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
                       <button onClick={() => setResposta(s.id, 0)}
                         className="px-3 sm:px-4 py-2.5 rounded-full text-[12px] font-medium lift min-w-[52px] sm:min-w-[64px]"
                         style={{

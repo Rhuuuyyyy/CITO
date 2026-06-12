@@ -194,6 +194,9 @@
       background: linear-gradient(90deg, transparent 0%, var(--ink) 12%, var(--ink) 88%, transparent 100%);
       height: 1px;
     }
+
+    /* Chrome GPU compositor fix: sticky topbar vs fixed modals */
+    .fixed.inset-0 { will-change: transform; }
   </style>
 </head>
 <body>

@@ -197,6 +197,11 @@
       background: linear-gradient(90deg, transparent 0%, var(--ink) 12%, var(--ink) 88%, transparent 100%);
       height: 1px;
     }
+
+    /* Chrome GPU compositor fix: sticky topbar can incorrectly render above fixed
+       modals. Promoting every fixed+inset-0 overlay to its own compositor layer
+       forces correct z-order regardless of the sticky element. */
+    .fixed.inset-0 { will-change: transform; }
   </style>
 </head>
 <body>

@@ -150,7 +150,7 @@ function StatCard({ label, value, detail, sub }) {
       onMouseLeave={() => setHovered(false)}
       onTouchStart={() => setHovered(true)}
       onTouchEnd={() => setTimeout(() => setHovered(false), 1200)}
-      className="rounded-3xl p-5 relative overflow-hidden lift cursor-default"
+      className="rounded-3xl relative overflow-hidden lift cursor-default"
       style={{
         background: hovered ? 'var(--ink)' : 'var(--surface)',
         border: '1px solid var(--hair-soft)',
@@ -158,23 +158,26 @@ function StatCard({ label, value, detail, sub }) {
         boxShadow: hovered
           ? '0 12px 32px -10px rgba(0,0,0,0.18)'
           : '0 1px 0 rgba(0,0,0,0.02), 0 4px 12px -6px rgba(0,0,0,0.05)',
-        minHeight: 140,
+        minHeight: 148,
       }}>
 
       {/* Estado padrão */}
-      <div style={{
+      <div className="absolute inset-0 p-5 flex flex-col justify-between" style={{
         opacity: hovered ? 0 : 1,
-        transform: hovered ? 'translateY(-6px)' : 'translateY(0)',
+        transform: hovered ? 'translateY(-8px)' : 'translateY(0)',
         transition: 'opacity 0.2s ease, transform 0.2s ease',
+        pointerEvents: hovered ? 'none' : 'auto',
       }}>
-        <div className="text-[10.5px] font-medium uppercase tracking-[0.16em] mb-3"
+        <div className="text-[10.5px] font-medium uppercase tracking-[0.16em]"
           style={{ color: 'var(--muted)' }}>{label}</div>
-        <div className="font-display text-[48px] leading-none num-tabular"
-          style={{ color: 'var(--ink)' }}>{value}</div>
-        <div className="text-[11.5px] mt-2" style={{ color: 'var(--subtle)' }}>{sub}</div>
+        <div>
+          <div className="font-display text-[44px] leading-none num-tabular"
+            style={{ color: 'var(--ink)' }}>{value}</div>
+          <div className="text-[11.5px] mt-1.5" style={{ color: 'var(--subtle)' }}>{sub}</div>
+        </div>
       </div>
 
-      {/* Estado hover */}
+      {/* Estado hover — mostra breakdown em vez de repetir o valor */}
       <div className="absolute inset-0 p-5 flex flex-col justify-between" style={{
         opacity: hovered ? 1 : 0,
         transform: hovered ? 'translateY(0)' : 'translateY(8px)',
@@ -183,17 +186,13 @@ function StatCard({ label, value, detail, sub }) {
       }}>
         <div className="text-[10.5px] font-medium uppercase tracking-[0.16em]"
           style={{ color: 'var(--on-ink-55)' }}>{label}</div>
-        <div>
-          <div className="font-display text-[48px] leading-none num-tabular"
-            style={{ color: 'var(--on-ink)' }}>{value}</div>
-          <div className="mt-3 space-y-1.5">
-            {detail.map((d, i) => (
-              <div key={i} className="flex items-center justify-between text-[12.5px]">
-                <span style={{ color: 'var(--on-ink-55)' }}>{d.label}</span>
-                <span className="font-medium" style={{ color: 'var(--on-ink)' }}>{d.val}</span>
-              </div>
-            ))}
-          </div>
+        <div className="space-y-2.5">
+          {detail.map((d, i) => (
+            <div key={i} className="flex items-center justify-between">
+              <span className="text-[12px]" style={{ color: 'var(--on-ink-55)' }}>{d.label}</span>
+              <span className="text-[13px] font-medium num-tabular" style={{ color: 'var(--on-ink)' }}>{d.val}</span>
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -475,17 +474,11 @@ function DashboardPage({ onNav }) {
           ))}
         </div>
 
-        <div className="px-5 py-3 flex items-center justify-between"
+        <div className="px-5 py-3"
           style={{ borderTop: '1px solid var(--hair-soft)', background: 'var(--paper-2)' }}>
           <span className="text-[11.5px]" style={{ color: 'var(--muted)' }}>
             {appointments.length} {appointments.length === 1 ? 'consulta hoje' : 'consultas hoje'}
           </span>
-          <button className="text-[12px] font-medium lift"
-            style={{ color: 'var(--ink)' }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--muted)'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--ink)'; }}>
-            {Icon.print} Imprimir agenda
-          </button>
         </div>
       </Card>
 
