@@ -433,6 +433,7 @@ function ModalProntuario({ paciente, onClose, onChanged }) {
         nome: av.paciente_nome,
         sexo: av.paciente_sexo,
         dataNasc: av.paciente_data_nascimento,
+        dataAvaliacao: av.data_avaliacao,
         acomp: {
           nome: av.acompanhante_nome,
           relacao: av.acompanhante_relacao,

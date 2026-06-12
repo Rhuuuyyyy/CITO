@@ -282,6 +282,12 @@ function TriagemPage({ onNav, usuario }) {
   const [acompId, setAcompId]   = useState(null); // id do acompanhante selecionado (modelo B)
   const [novoAcomp, setNovoAcomp] = useState(null); // null = fechado; obj = form de cadastro aberto
   const [salvandoAcomp, setSalvandoAcomp] = useState(false);
+  // true = acompanhante recém-criado na triagem (precisa definir o parentesco).
+  // false = acompanhante já cadastrado, cuja relação veio do cadastro do paciente.
+  const [acompNovoCriado, setAcompNovoCriado] = useState(false);
+  // Acompanhantes já vinculados ao paciente selecionado (com a relação do
+  // cadastro / triagens anteriores), para não perguntar o parentesco de novo.
+  const [pacienteAcomps, setPacienteAcomps] = useState([]);
   const [respostas, setRespostas] = useState(Object.fromEntries(SINTOMAS.map((s) => [s.id, null])));
   const [sintomaIdMap, setSintomaIdMap] = useState({});
   const [historico, setHistorico] = useState({
@@ -329,7 +335,7 @@ function TriagemPage({ onNav, usuario }) {
     raw: a,
   }));
 
-  function selecionarPaciente(item) {
+  async function selecionarPaciente(item) {
     const p = item.raw;
     setPacienteId(p.id);
     setPaciente({
@@ -340,18 +346,46 @@ function TriagemPage({ onNav, usuario }) {
     });
     setAcomp({ nome: '', relacao: '', telefone: p.telefone || '', email: '' });
     setAcompId(null);
+    setAcompNovoCriado(false);
+    setPacienteAcomps([]);
     setErrors({});
+
+    // Carrega o acompanhante já cadastrado para o paciente, junto da relação
+    // definida no cadastro — assim a triagem não pergunta o parentesco de novo.
+    try {
+      const det = await api.getPacienteDetalhe(p.id);
+      const acomps = det.acompanhantes || [];
+      setPacienteAcomps(acomps);
+      // Prefere o acompanhante com relação já definida (o do cadastro).
+      const reg = acomps.find((a) => a.relacao) || acomps[0];
+      if (reg) {
+        setAcomp({
+          nome: reg.nome || '',
+          relacao: reg.relacao || '',
+          telefone: reg.telefone || '',
+          email: reg.email || '',
+        });
+        setAcompId(reg.id || null);
+        setAcompNovoCriado(false);
+      }
+    } catch (err) {
+      console.error('Erro ao carregar acompanhante do paciente:', err);
+    }
   }
 
   function selecionarAcomp(item) {
     const a = item.raw;
+    // Se este acompanhante já está vinculado ao paciente, reaproveita a relação
+    // (grau de parentesco) definida no cadastro/triagens anteriores — não pergunta de novo.
+    const conhecido = pacienteAcomps.find((x) => x.id === (item.id || a.id));
     setAcomp({
       nome: a.nome || '',
-      relacao: a.relacao || '',
+      relacao: (conhecido && conhecido.relacao) || a.relacao || '',
       telefone: a.telefone || '',
       email: a.email || '',
     });
     setAcompId(item.id || null);
+    setAcompNovoCriado(false);
     setErrors({});
   }
 
@@ -366,6 +400,7 @@ function TriagemPage({ onNav, usuario }) {
       });
       setAcomp({ nome: criado.nome, relacao: '', telefone: criado.telefone || '', email: criado.email || '' });
       setAcompId(criado.id);
+      setAcompNovoCriado(true);
       setAcompsDb((prev) => [...prev, criado]);
       setNovoAcomp(null);
     } catch (err) {
@@ -381,6 +416,8 @@ function TriagemPage({ onNav, usuario }) {
     setPaciente({ nome: '', dataNasc: '', sexo: '', cpf: '' });
     setAcomp({ nome: '', relacao: '', telefone: '', email: '' });
     setAcompId(null);
+    setAcompNovoCriado(false);
+    setPacienteAcomps([]);
     setErrors({});
   }
 
@@ -478,6 +515,8 @@ function TriagemPage({ onNav, usuario }) {
       nome: paciente.nome,
       sexo: paciente.sexo,
       dataNasc: paciente.dataNasc,
+      cpf: paciente.cpf,
+      diagnosticoPrevio: false,
       acomp: { nome: acomp.nome, relacao: acomp.relacao, telefone: acomp.telefone, email: acomp.email },
       respostas,
       historico,
@@ -554,7 +593,7 @@ function TriagemPage({ onNav, usuario }) {
               items={acompsItems}
               value=""
               onSelect={selecionarAcomp}
-              onClear={() => { setAcomp({ nome: '', relacao: '', telefone: '', email: '' }); setAcompId(null); }}
+              onClear={() => { setAcomp({ nome: '', relacao: '', telefone: '', email: '' }); setAcompId(null); setAcompNovoCriado(false); }}
             />
           </Field>
 
@@ -606,21 +645,28 @@ function TriagemPage({ onNav, usuario }) {
                 {acomp.telefone && <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Telefone</span><p className="font-mono">{acomp.telefone}</p></div>}
                 {acomp.email && <div><span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>E-mail</span><p>{acomp.email}</p></div>}
               </div>
-              <div>
-                <span className="text-[10.5px] uppercase tracking-wider block mb-2" style={{ color: 'var(--subtle)' }}>Relação com o paciente</span>
-                <div className="flex flex-wrap gap-2">
-                  {RELACOES_ACOMP.map((r) => (
-                    <button key={r} type="button"
-                      onClick={() => setAcomp((a) => ({ ...a, relacao: r }))}
-                      className="px-3 py-1.5 rounded-full text-[12px] font-medium lift"
-                      style={{
-                        background: acomp.relacao === r ? 'var(--ink)' : 'var(--surface)',
-                        color: acomp.relacao === r ? 'var(--on-ink)' : 'var(--ink-2)',
-                        border: acomp.relacao === r ? '1px solid var(--ink)' : '1px solid var(--hair)',
-                      }}>{r}</button>
-                  ))}
+              {(acompNovoCriado || !acomp.relacao) ? (
+                <div>
+                  <span className="text-[10.5px] uppercase tracking-wider block mb-2" style={{ color: 'var(--subtle)' }}>Relação com o paciente</span>
+                  <div className="flex flex-wrap gap-2">
+                    {RELACOES_ACOMP.map((r) => (
+                      <button key={r} type="button"
+                        onClick={() => setAcomp((a) => ({ ...a, relacao: r }))}
+                        className="px-3 py-1.5 rounded-full text-[12px] font-medium lift"
+                        style={{
+                          background: acomp.relacao === r ? 'var(--ink)' : 'var(--surface)',
+                          color: acomp.relacao === r ? 'var(--on-ink)' : 'var(--ink-2)',
+                          border: acomp.relacao === r ? '1px solid var(--ink)' : '1px solid var(--hair)',
+                        }}>{r}</button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>Relação com o paciente</span>
+                  <p>{acomp.relacao}</p>
+                </div>
+              )}
             </div>
           )}
 
