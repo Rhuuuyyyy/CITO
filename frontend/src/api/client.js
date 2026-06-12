@@ -6,7 +6,7 @@
 // Configure the backend URL here (default: local uvicorn). The backend must
 // allow this page's origin in CORS_ORIGINS.
 // ═══════════════════════════════════════════════════════════════════════
-const API_BASE = (/api/v1);
+const API_BASE = (window.CITO_API_BASE || '/api/v1');
 
 const api = {
   _token: null,
