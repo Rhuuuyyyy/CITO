@@ -221,9 +221,11 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
             </button>
           </p>
 
-          {/* Gatos decorativos */}
-          <div className="flex justify-center mt-10" style={{ opacity: 0.18 }}>
-            <CatRow height={20} gap={6} />
+          {/* Logo */}
+          <div className="flex justify-center mt-10" style={{ opacity: 0.25 }}>
+            <img src="assets/cito-tight.png" alt="cito"
+              className="cito-logo-img select-none pointer-events-none"
+              style={{ height: 24, width: 'auto' }} />
           </div>
 
         </div>

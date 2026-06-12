@@ -4,7 +4,7 @@
 function Topbar({ title, subtitle, onMenu, children }) {
   return (
     <header className="sticky top-0 h-[68px] px-6 lg:px-10 flex items-center justify-between"
-      style={{ background: 'var(--topbar-bg)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--hair-soft)' }}>
+      style={{ background: 'var(--paper)', borderBottom: '1px solid var(--hair-soft)' }}>
       <div className="flex items-center gap-4">
         <button onClick={onMenu} className="lg:hidden flex flex-col gap-1 p-1.5">
           <span className="w-5 h-px block" style={{ background: 'var(--ink)' }} />
