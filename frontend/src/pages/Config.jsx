@@ -250,7 +250,7 @@ function ParametrosScoreSection({ onBack }) {
         </div>
         <div style={{ borderTop: '1px solid var(--hair-soft)', paddingTop: '1rem' }}>
           <p className="text-[13px] leading-relaxed" style={{ color: 'var(--ink-2)' }}>
-            Estudo de coorte com 419 indivíduos com mutação completa ou mosaicismo confirmados molecularmente no gene
+            Estudo de corte com 419 indivíduos com mutação completa ou mosaicismo confirmados molecularmente no gene
             <em> FMR1</em> (364 do sexo masculino, 55 do sexo feminino), provenientes do banco de dados do Instituto Buko Kaesemodel.
             Foram avaliados 12 sinais físicos, cognitivos e comportamentais. Análises estatísticas combinadas com aprendizado de
             máquina (Random Forest, K-means) identificaram as características mais discriminativas por sexo.
@@ -370,7 +370,7 @@ function ParametrosScoreSection({ onBack }) {
       {/* Nota explicativa */}
       <div className="rounded-2xl px-5 py-4 text-[12px] leading-relaxed"
         style={{ background: 'var(--paper-2)', border: '1px solid var(--hair-soft)', color: 'var(--muted)' }}>
-        O escore é a soma dos pesos dos sintomas presentes, calculados pelo sexo do paciente. Quando o
+        O escore é a soma dos pesos dos sintomas presentes, calculados conforme o sexo do paciente. Quando o
         escore atinge ou ultrapassa o limiar de corte, o sistema recomenda o encaminhamento para o teste
         genético (FMR1). Os valores são definidos cientificamente e mantidos no banco (modelo ROMERO 2025);
         esta tela é apenas para consulta.
