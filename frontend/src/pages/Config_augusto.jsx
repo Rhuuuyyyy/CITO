@@ -197,6 +197,24 @@ function RelatoriosSection({ onBack }) {
   );
 }
 
+<<<<<<< HEAD
+// ── Seção de parâmetros do escore (consulta, somente leitura) ────────
+// Mostra o peso de cada sintoma (♂/♀) e os limiares/métricas do modelo, para
+// o médico consultar. Os pesos vêm do catálogo compartilhado (window.LAUDO),
+// a mesma fonte usada no laudo e na triagem. O endpoint /sintomas não expõe
+// pesos — eles vivem no banco e estão espelhados no frontend.
+function ParametrosScoreSection({ onBack }) {
+  const sintomas = (window.LAUDO && window.LAUDO.SINTOMAS) || [];
+  const PARAM = {
+    M: { limiar: 0.56, auc: 0.73, sens: 95, versao: 'ROMERO_2025_v1_M', label: 'Masculino', simbolo: '♂' },
+    F: { limiar: 0.55, auc: 0.76, sens: 95, versao: 'ROMERO_2025_v1_F', label: 'Feminino',  simbolo: '♀' },
+  };
+  const somaM = sintomas.reduce((s, x) => s + (x.pesoM || 0), 0);
+  const somaF = sintomas.reduce((s, x) => s + (x.pesoF || 0), 0);
+
+  return (
+    <div className="anim-fade-in space-y-5">
+=======
 // ── Seção de parâmetros do escore ────────────────────────────────────
 function ParametrosEscoreSection({ onBack }) {
   const PDF_URL = 'https://doi.org/10.1101/2025.10.21.25338500';
@@ -219,6 +237,7 @@ function ParametrosEscoreSection({ onBack }) {
   return (
     <div className="anim-fade-in space-y-5">
       {/* Voltar */}
+>>>>>>> f3c97ab3a47bbe6b1dc67e6b4c0ee3f42788469b
       <button onClick={onBack}
         className="inline-flex items-center gap-1.5 text-[13px] font-medium lift mb-1"
         style={{ color: 'var(--muted)' }}
@@ -227,6 +246,46 @@ function ParametrosEscoreSection({ onBack }) {
         {Icon.chevronLeft} Voltar para configurações
       </button>
 
+<<<<<<< HEAD
+      <div>
+        <h2 className="font-display text-[28px] leading-none">Parâmetros do escore</h2>
+        <p className="text-[13px] mt-1.5" style={{ color: 'var(--muted)' }}>
+          Peso de cada sintoma e limiares de corte do modelo de triagem
+        </p>
+      </div>
+
+      {/* Limiares e métricas por sexo */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {['M', 'F'].map((sx) => {
+          const p = PARAM[sx];
+          return (
+            <div key={sx} className="rounded-3xl p-5 card-shadow"
+              style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-[14px]"
+                  style={{ background: 'var(--ink)', color: 'var(--on-ink)' }}>{p.simbolo}</div>
+                <div className="text-[13.5px] font-medium">{p.label}</div>
+              </div>
+              <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] mb-1"
+                style={{ color: 'var(--muted)' }}>Limiar de corte</div>
+              <div className="font-display text-[34px] leading-none num-tabular mb-4"
+                style={{ color: 'var(--ink)' }}>{p.limiar.toFixed(2)}</div>
+              <div className="grid grid-cols-3 gap-2 text-center">
+                {[
+                  { l: 'AUC', v: p.auc.toFixed(2) },
+                  { l: 'Sensib.', v: `${p.sens}%` },
+                  { l: 'Score máx.', v: (sx === 'M' ? somaM : somaF).toFixed(2) },
+                ].map((m, i) => (
+                  <div key={i} className="rounded-xl py-2"
+                    style={{ background: 'var(--paper-2)', border: '1px solid var(--hair-soft)' }}>
+                    <div className="text-[9.5px] uppercase tracking-wider" style={{ color: 'var(--subtle)' }}>{m.l}</div>
+                    <div className="font-mono num-tabular text-[14px] mt-0.5" style={{ color: 'var(--ink-2)' }}>{m.v}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[10.5px] font-mono mt-3" style={{ color: 'var(--subtle)' }}>
+                versão {p.versao}
+=======
       {/* Cabeçalho */}
       <div>
         <h2 className="font-display text-[28px] leading-none">Parâmetros do escore</h2>
@@ -365,11 +424,82 @@ function ParametrosEscoreSection({ onBack }) {
                       }} />
                   </div>
                 </div>
+>>>>>>> f3c97ab3a47bbe6b1dc67e6b4c0ee3f42788469b
               </div>
             </div>
           );
         })}
       </div>
+<<<<<<< HEAD
+
+      {/* Tabela de pesos por sintoma */}
+      <div className="rounded-3xl overflow-hidden card-shadow"
+        style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
+        <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
+          <h3 className="font-display text-[18px] leading-none">Peso por sintoma</h3>
+          <p className="text-[11.5px] mt-1" style={{ color: 'var(--muted)' }}>
+            Pontos somados ao escore quando o sintoma está presente, conforme o sexo do paciente
+          </p>
+        </div>
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--hair-soft)', background: 'var(--paper-2)' }}>
+              <th className="text-left font-medium px-6 py-2.5 text-[10.5px] uppercase tracking-[0.12em]"
+                style={{ color: 'var(--muted)' }}>Sintoma</th>
+              <th className="text-right font-medium px-4 py-2.5 text-[10.5px] uppercase tracking-[0.12em]"
+                style={{ color: 'var(--muted)' }}>Peso ♂</th>
+              <th className="text-right font-medium px-6 py-2.5 text-[10.5px] uppercase tracking-[0.12em]"
+                style={{ color: 'var(--muted)' }}>Peso ♀</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sintomas.map((s, i) => {
+              const exclusivoM = s.pesoF === null || s.pesoF === undefined;
+              const maiorF = !exclusivoM && s.pesoF > s.pesoM;
+              return (
+                <tr key={s.id} style={{ borderBottom: i < sintomas.length - 1 ? '1px solid var(--hair-soft)' : 'none' }}>
+                  <td className="px-6 py-3">
+                    {s.label}
+                    {exclusivoM && (
+                      <span className="ml-2 text-[10px] font-mono px-1.5 py-0.5 rounded"
+                        style={{ background: 'var(--paper-2)', color: 'var(--subtle)', border: '1px solid var(--hair-soft)' }}>
+                        exclusivo ♂
+                      </span>
+                    )}
+                  </td>
+                  <td className="text-right px-4 py-3 font-mono num-tabular"
+                    style={{ color: maiorF ? 'var(--muted)' : 'var(--ink)', fontWeight: maiorF ? 400 : 500 }}>
+                    {s.pesoM.toFixed(2)}
+                  </td>
+                  <td className="text-right px-6 py-3 font-mono num-tabular"
+                    style={{ color: exclusivoM ? 'var(--subtle)' : (maiorF ? 'var(--ink)' : 'var(--muted)'), fontWeight: maiorF ? 500 : 400 }}>
+                    {exclusivoM ? '—' : s.pesoF.toFixed(2)}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr style={{ borderTop: '2px solid var(--hair)', background: 'var(--paper-2)' }}>
+              <td className="px-6 py-3 text-[12px] font-medium uppercase tracking-[0.1em]"
+                style={{ color: 'var(--muted)' }}>Score máximo</td>
+              <td className="text-right px-4 py-3 font-mono num-tabular font-medium" style={{ color: 'var(--ink)' }}>{somaM.toFixed(2)}</td>
+              <td className="text-right px-6 py-3 font-mono num-tabular font-medium" style={{ color: 'var(--ink)' }}>{somaF.toFixed(2)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {/* Nota explicativa */}
+      <div className="rounded-2xl px-5 py-4 text-[12px] leading-relaxed"
+        style={{ background: 'var(--paper-2)', border: '1px solid var(--hair-soft)', color: 'var(--muted)' }}>
+        O escore é a soma dos pesos dos sintomas presentes, calculados pelo sexo do paciente. Quando o
+        escore atinge ou ultrapassa o limiar de corte, o sistema recomenda o encaminhamento para o teste
+        genético (FMR1). Os valores são definidos cientificamente e mantidos no banco (modelo ROMERO 2025);
+        esta tela é apenas para consulta.
+      </div>
+=======
+>>>>>>> f3c97ab3a47bbe6b1dc67e6b4c0ee3f42788469b
     </div>
   );
 }
@@ -378,15 +508,21 @@ function ParametrosEscoreSection({ onBack }) {
 // PÁGINA PRINCIPAL DE CONFIG
 // ═══════════════════════════════════════════════════════════════════════
 function ConfigPage() {
-  const [sub, setSub] = useState(null); // null | 'relatorios'
+  const [sub, setSub] = useState(null); // null | 'relatorios' | 'parametros'
 
   if (sub === 'relatorios') {
     return <RelatoriosSection onBack={() => setSub(null)} />;
   }
+<<<<<<< HEAD
+  if (sub === 'parametros') {
+    return <ParametrosScoreSection onBack={() => setSub(null)} />;
+  }
+=======
   if (sub === 'modelos')
     return <ModelosImpressosSection onBack={() => setSub(null)} />;
   if (sub === 'parametros')
     return <ParametrosEscoreSection onBack={() => setSub(null)} />;
+>>>>>>> f3c97ab3a47bbe6b1dc67e6b4c0ee3f42788469b
 
   const cards = [
     {
@@ -396,8 +532,20 @@ function ConfigPage() {
       action: () => setSub('relatorios'),
     },
     {
+<<<<<<< HEAD
+      icon: Icon.print,    tag: 'Documentos',
+      title: 'Modelos de impressos',
+      desc:  'Gerencie modelos de receitas, laudos e atestados médicos.',
+      action: () => {},
+    },
+    {
+      icon: Icon.sparkle,  tag: 'Referência',
+      title: 'Parâmetros do escore',
+      desc:  'Consulte o peso de cada sintoma e os limiares de corte por sexo (♂ 0.56 · ♀ 0.55).',
+=======
       icon: Icon.sparkle, tag: 'Avançado',   title: 'Parâmetros do escore',
       desc: 'Ajuste limiares de encaminhamento por sexo (♂ 0.56 · ♀ 0.55).',
+>>>>>>> f3c97ab3a47bbe6b1dc67e6b4c0ee3f42788469b
       action: () => setSub('parametros'),
     },
   ];
