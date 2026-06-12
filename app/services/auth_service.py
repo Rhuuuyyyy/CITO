@@ -1,10 +1,22 @@
 """AuthService — manages doctor sessions and authentication audit trail."""
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import cast
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
+
+
+@dataclass(frozen=True)
+class AuthenticatedUser:
+    """Identity returned after a successful credential check."""
+
+    usuario_id: int
+    tipo: str  # 'admin' | 'medico'
+    nome: str
+    crm: str | None
+    especialidade: str | None
 
 
 class AuthService:
@@ -126,16 +138,17 @@ class AuthService:
         *,
         email: str,
         senha_plain: str,
-    ) -> tuple[int, str] | None:
+    ) -> AuthenticatedUser | None:
         """Verify credentials against the DB using PostgreSQL native crypt().
 
-        Returns (usuario_id, tipo) if valid, or None if invalid. ``tipo`` is the
-        RBAC role from the DB ('admin' or 'medico'). NEVER log senha_plain.
+        Returns the authenticated user's identity if valid, or None if invalid.
+        ``tipo`` is the RBAC role from the DB ('admin' or 'medico'). NEVER log
+        senha_plain.
         """
         result = await self._session.execute(
             text(
                 """
-                SELECT id, tipo
+                SELECT id, tipo, nome, crm, especialidade
                 FROM usuarios
                 WHERE email = LOWER(:email)
                   AND senha = crypt(:senha, senha)
@@ -147,4 +160,10 @@ class AuthService:
         row = result.mappings().first()
         if row is None:
             return None
-        return int(cast(int, row["id"])), str(row["tipo"] or "medico")
+        return AuthenticatedUser(
+            usuario_id=int(cast(int, row["id"])),
+            tipo=str(row["tipo"] or "medico"),
+            nome=str(row["nome"]),
+            crm=str(row["crm"]) if row["crm"] else None,
+            especialidade=str(row["especialidade"]) if row["especialidade"] else None,
+        )

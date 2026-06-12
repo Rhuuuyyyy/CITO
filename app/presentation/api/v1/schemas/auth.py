@@ -12,3 +12,6 @@ class TokenLoginResponse(BaseModel):
     sessao_id: int
     usuario_id: int
     tipo: str | None = None
+    nome: str | None = None
+    crm: str | None = None
+    especialidade: str | None = None

@@ -31,12 +31,10 @@ class PatientCreateRequest(BaseModel):
     data_nascimento: date
     sexo: str = Field(pattern="^(M|F|I)$")
     etnia: str | None = None
-    uf_nascimento: str | None = Field(default=None, max_length=2)
+    telefone: str | None = Field(default=None, max_length=20)
     municipio_residencia: str | None = Field(default=None, max_length=120)
     uf_residencia: str | None = Field(default=None, max_length=2)
     prematuro: bool = False
-    idade_gestacional_semanas: int | None = None
-    peso_nascimento_gramas: float | None = None
     escolaridade: str | None = None
     tem_diagnostico_autismo: bool = False
     tem_diagnostico_tdah: bool = False
@@ -44,6 +42,33 @@ class PatientCreateRequest(BaseModel):
     medicamentos_uso: str | None = None
     diagnostico_confirmado_fxs: bool = False
     acompanhante: AcompanhanteCreateRequest | None = None
+
+
+class PatientUpdateRequest(BaseModel):
+    """Payload for editing an existing patient's data.
+
+    ``cpf`` is optional: when omitted/None the stored CPF hash is kept unchanged
+    (the detail view only exposes a masked placeholder, so the UI can't pre-fill
+    the real digits). All other fields overwrite the current values.
+    """
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    nome: str = Field(min_length=2, max_length=120)
+    cpf: str | None = Field(default=None, min_length=11, max_length=14)
+    data_nascimento: date
+    sexo: str = Field(pattern="^(M|F|I)$")
+    etnia: str | None = None
+    telefone: str | None = Field(default=None, max_length=20)
+    municipio_residencia: str | None = Field(default=None, max_length=120)
+    uf_residencia: str | None = Field(default=None, max_length=2)
+    prematuro: bool = False
+    escolaridade: str | None = None
+    tem_diagnostico_autismo: bool = False
+    tem_diagnostico_tdah: bool = False
+    outras_comorbidades: str | None = None
+    medicamentos_uso: str | None = None
+    diagnostico_confirmado_fxs: bool = False
 
 
 class PatientResponse(BaseModel):
@@ -79,6 +104,9 @@ class PatientListItemSchema(BaseModel):
         default=None, description="Status de risco: TRUE = encaminhar para exame"
     )
     ativo: bool = Field(default=True, description="FALSE = paciente arquivado")
+    medico: str | None = Field(
+        default=None, description="Médico que cadastrou o paciente (visível para admin)"
+    )
 
 
 class PatientSetAtivoRequest(BaseModel):
@@ -130,12 +158,10 @@ class PatientDetailResponse(BaseModel):
     idade_anos: int | None = None
     cpf_masked: str | None = None
     etnia: str | None = None
-    uf_nascimento: str | None = None
+    telefone: str | None = None
     municipio_residencia: str | None = None
     uf_residencia: str | None = None
     prematuro: bool | None = None
-    idade_gestacional_semanas: int | None = None
-    peso_nascimento_gramas: int | None = None
     escolaridade: str | None = None
     tem_diagnostico_autismo: bool | None = None
     tem_diagnostico_tdah: bool | None = None

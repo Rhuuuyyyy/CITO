@@ -34,9 +34,11 @@ class GetDashboardSummaryUseCase:
     def __init__(self, dashboard: DashboardRepository) -> None:
         self._dashboard = dashboard
 
-    async def execute(self, *, usuario_id: int) -> DashboardSummaryResult:
+    async def execute(
+        self, *, usuario_id: int, is_admin: bool = False
+    ) -> DashboardSummaryResult:
         summary: DashboardSummary = await self._dashboard.get_summary(
-            usuario_id=usuario_id
+            usuario_id=usuario_id, is_admin=is_admin
         )
         return DashboardSummaryResult(
             total_pacientes=summary.total_pacientes,

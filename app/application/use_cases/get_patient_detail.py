@@ -22,8 +22,11 @@ class GetPatientDetailUseCase:
         *,
         paciente_id: int,
         usuario_id: int,
+        is_admin: bool = False,
     ) -> PatientDetail | None:
+        # Admin pode abrir qualquer paciente; médico só os seus.
+        restrict_to = None if is_admin else usuario_id
         return await self._patients.get_detail(
             paciente_id=paciente_id,
-            usuario_id=usuario_id,
+            restrict_to_usuario_id=restrict_to,
         )

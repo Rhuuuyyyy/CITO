@@ -63,6 +63,7 @@ class Patient(BaseModel):
     # Demographic fields — all optional (the registration form does not
     # collect place-of-birth/residence; the DB columns are nullable).
     etnia: Etnia | None = None
+    telefone: str | None = None
     uf_nascimento: str | None = None
     municipio_residencia: str | None = None
     uf_residencia: str | None = None

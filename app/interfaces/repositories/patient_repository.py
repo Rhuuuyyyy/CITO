@@ -82,7 +82,17 @@ class PatientRepository:
             raise RuntimeError(
                 "Falha ao inserir paciente — RETURNING id não retornou valor"
             )
-        return patient.model_copy(update={"id": int(row["id"])})
+        new_id = int(row["id"])
+
+        # Telefone não passa pela view (sem coluna/trigger); grava direto em
+        # tb_pacientes logo após o insert, na mesma transação.
+        if patient.telefone:
+            await self._session.execute(
+                text("UPDATE tb_pacientes SET telefone = :tel WHERE id = :id"),
+                {"tel": patient.telefone, "id": new_id},
+            )
+
+        return patient.model_copy(update={"id": new_id})
 
     async def get_by_id(self, entity_id: int) -> Patient | None:
         """Look up a patient by integer DB id."""
@@ -101,8 +111,17 @@ class PatientRepository:
         row = result.mappings().first()
         return self._row_to_patient(row) if row is not None else None
 
-    async def belongs_to(self, *, paciente_id: int, usuario_id: int) -> bool:
-        """True if the patient exists and was registered by this doctor."""
+    async def belongs_to(
+        self, *, paciente_id: int, usuario_id: int, is_admin: bool = False
+    ) -> bool:
+        """True if the patient exists and (unless admin) was registered by this
+        doctor. Admins may act on any patient."""
+        if is_admin:
+            result = await self._session.execute(
+                text("SELECT 1 FROM tb_pacientes WHERE id = :id"),
+                {"id": paciente_id},
+            )
+            return result.first() is not None
         result = await self._session.execute(
             text(
                 "SELECT 1 FROM tb_pacientes WHERE id = :id AND criado_por = :uid"
@@ -112,15 +131,17 @@ class PatientRepository:
         return result.first() is not None
 
     async def set_ativo(
-        self, *, paciente_id: int, usuario_id: int, ativo: bool
+        self, *, paciente_id: int, usuario_id: int, ativo: bool, is_admin: bool = False
     ) -> bool:
-        """Archive (ativo=FALSE) or restore (ativo=TRUE) a patient owned by the
-        doctor. Returns True if a row was updated."""
+        """Archive (ativo=FALSE) or restore (ativo=TRUE) a patient. Scoped to the
+        owning doctor unless ``is_admin`` (admins act on any). Returns True if a
+        row was updated."""
+        owner_clause = "" if is_admin else "AND criado_por = :uid"
         result = await self._session.execute(
             text(
-                """
+                f"""
                 UPDATE tb_pacientes SET ativo = :ativo
-                WHERE id = :id AND criado_por = :uid
+                WHERE id = :id {owner_clause}
                 RETURNING id
                 """
             ),
@@ -128,8 +149,87 @@ class PatientRepository:
         )
         return result.first() is not None
 
+    async def update(
+        self,
+        *,
+        paciente_id: int,
+        usuario_id: int,
+        is_admin: bool,
+        nome: str,
+        cpf_hash: str | None,
+        atualizar_cpf: bool,
+        data_nascimento: object,
+        sexo: str,
+        etnia: str | None,
+        telefone: str | None,
+        municipio_residencia: str | None,
+        uf_residencia: str | None,
+        prematuro: bool | None,
+        escolaridade: str | None,
+        tem_diagnostico_autismo: bool,
+        tem_diagnostico_tdah: bool,
+        outras_comorbidades: str | None,
+        medicamentos_uso: str | None,
+        diagnostico_confirmado_fxs: bool,
+    ) -> bool:
+        """Update a patient's demographic/clinical fields directly on
+        ``tb_pacientes`` (the view has no INSTEAD OF UPDATE trigger). The name is
+        re-encrypted with the session PGP key. Scoped to the owning doctor unless
+        ``is_admin``. Returns True if a row was updated.
+
+        ``cpf_hash`` is only written when ``atualizar_cpf`` is True; otherwise the
+        existing CPF is preserved.
+        """
+        sets = [
+            "nome_criptografado = pgp_sym_encrypt(:nome, current_setting('app.pgp_key', true))",
+            "data_nascimento = :data_nascimento",
+            "sexo = :sexo",
+            "etnia = :etnia",
+            "telefone = :telefone",
+            "municipio_residencia = :municipio_residencia",
+            "uf_residencia = :uf_residencia",
+            "prematuro = :prematuro",
+            "escolaridade = :escolaridade",
+            "tem_diagnostico_autismo = :tem_diagnostico_autismo",
+            "tem_diagnostico_tdah = :tem_diagnostico_tdah",
+            "outras_comorbidades = :outras_comorbidades",
+            "medicamentos_uso = :medicamentos_uso",
+            "diagnostico_confirmado_fxs = :diagnostico_confirmado_fxs",
+        ]
+        params: dict[str, object] = {
+            "pid": paciente_id,
+            "uid": usuario_id,
+            "nome": nome,
+            "data_nascimento": data_nascimento,
+            "sexo": sexo,
+            "etnia": etnia,
+            "telefone": telefone,
+            "municipio_residencia": municipio_residencia,
+            "uf_residencia": uf_residencia,
+            "prematuro": prematuro,
+            "escolaridade": escolaridade,
+            "tem_diagnostico_autismo": tem_diagnostico_autismo,
+            "tem_diagnostico_tdah": tem_diagnostico_tdah,
+            "outras_comorbidades": outras_comorbidades,
+            "medicamentos_uso": medicamentos_uso,
+            "diagnostico_confirmado_fxs": diagnostico_confirmado_fxs,
+        }
+        if atualizar_cpf:
+            sets.append("cpf_hash = :cpf_hash")
+            params["cpf_hash"] = cpf_hash
+
+        owner_clause = "" if is_admin else "AND criado_por = :uid"
+        result = await self._session.execute(
+            text(
+                f"UPDATE tb_pacientes SET {', '.join(sets)} "
+                f"WHERE id = :pid {owner_clause} RETURNING id"
+            ),
+            params,
+        )
+        return result.first() is not None
+
     async def delete_cascade(
-        self, *, paciente_id: int, usuario_id: int
+        self, *, paciente_id: int, usuario_id: int, is_admin: bool = False
     ) -> bool:
         """Permanently delete a patient and ALL dependent records.
 
@@ -158,9 +258,10 @@ class PatientRepository:
             text("DELETE FROM tb_agendamentos WHERE paciente_id = :pid"),
             {"pid": paciente_id},
         )
+        owner_clause = "" if is_admin else "AND criado_por = :uid"
         result = await self._session.execute(
             text(
-                "DELETE FROM tb_pacientes WHERE id = :pid AND criado_por = :uid "
+                f"DELETE FROM tb_pacientes WHERE id = :pid {owner_clause} "
                 "RETURNING id"
             ),
             {"pid": paciente_id, "uid": usuario_id},

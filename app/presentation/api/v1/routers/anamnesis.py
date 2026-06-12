@@ -134,6 +134,7 @@ async def get_evaluation_detail(
     detail = await use_case.execute(
         avaliacao_id=avaliacao_id,
         usuario_id=doctor.usuario_id,
+        is_admin=(doctor.role == "admin"),
     )
     if detail is None:
         raise HTTPException(

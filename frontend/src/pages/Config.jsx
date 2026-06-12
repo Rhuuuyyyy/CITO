@@ -39,25 +39,99 @@ function ConfigCard({ icon, tag, title, desc, onClick }) {
 }
 
 // ── Seção de relatórios / gráficos ───────────────────────────────────
-function RelatoriosSection({ onBack }) {
-  const [norm, setNorm] = useState([]);
+function RelatoriosSection({ usuario, onBack }) {
+  const isAdmin = usuario?.tipo === 'admin';
+  const [norm, setNorm]   = useState([]);
+  const [loading, setLoading] = useState(true);
 
+  // Filtros
+  const [nomeF, setNomeF]           = useState('');     // busca por nome do paciente
+  const [dataInicio, setDataInicio] = useState('');
+  const [dataFim, setDataFim]       = useState('');
+  const [sexoF, setSexoF]           = useState('');     // '' | 'M' | 'F'
+  const [medicoF, setMedicoF]       = useState('');     // '' = todos (admin)
+  const [medicos, setMedicos]       = useState([]);     // lista p/ o filtro (admin)
+  const [imprimindo, setImprimindo] = useState(null);   // avaliacao_id em impressão
+
+  // Admin: carrega a lista de médicos para o seletor de filtro.
   useEffect(() => {
-    api.getRelatorioAvaliacoes()
-      .then((data) => {
-        setNorm((data || []).map(a => {
-          const score = Number(a.score_final);
-          const sexo = a.sexo;
-          return {
-            score, sexo,
-            nome: a.nome_masked || '—',
-            data: new Date(a.data_avaliacao),
-            encaminha: score >= (sexo === 'M' ? 0.56 : 0.55),
-          };
-        }));
-      })
-      .catch((err) => console.error('Erro ao carregar relatórios:', err));
-  }, []);
+    if (!isAdmin) return;
+    api.getUsuarios()
+      .then((us) => setMedicos((us || []).filter((u) => u.ativo !== false)))
+      .catch((err) => console.error('Erro ao carregar médicos:', err));
+  }, [isAdmin]);
+
+  // Recarrega sempre que um filtro muda (debounce leve nas datas).
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      setLoading(true);
+      const params = {};
+      if (dataInicio) params.data_inicio = dataInicio;
+      if (dataFim)    params.data_fim    = dataFim;
+      if (sexoF)      params.sexo        = sexoF;
+      if (isAdmin && medicoF) params.medico_id = medicoF;
+      api.getRelatorioAvaliacoes(params)
+        .then((data) => {
+          setNorm((data || []).map(a => {
+            const score = Number(a.score_final);
+            const sexo = a.sexo;
+            return {
+              score, sexo,
+              avaliacaoId: a.avaliacao_id,
+              nome: a.nome_masked || '—',
+              medico: a.medico || '—',
+              data: new Date(a.data_avaliacao),
+              encaminha: score >= (sexo === 'M' ? 0.56 : 0.55),
+            };
+          }));
+        })
+        .catch((err) => console.error('Erro ao carregar relatórios:', err))
+        .finally(() => setLoading(false));
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [dataInicio, dataFim, sexoF, medicoF, isAdmin]);
+
+  function limparFiltros() {
+    setNomeF(''); setDataInicio(''); setDataFim(''); setSexoF(''); setMedicoF('');
+  }
+  const temFiltro = nomeF || dataInicio || dataFim || sexoF || medicoF;
+
+  // Gera/baixa o PDF do laudo de uma triagem (mesmo fluxo do prontuário).
+  async function imprimirLaudo(avaliacaoId) {
+    if (!avaliacaoId) return;
+    setImprimindo(avaliacaoId);
+    try {
+      const av  = await api.getAvaliacaoDetalhe(avaliacaoId);
+      const cat = (window.LAUDO && window.LAUDO.SINTOMA_DESCRICAO) || {};
+      const respostas = {};
+      (av.sintomas || []).forEach((s) => {
+        const id = Object.keys(cat).find((k) => cat[k] === s.descricao);
+        if (id) respostas[id] = s.presente ? 1 : 0;
+      });
+      const hist = av.historico_familiar || {};
+      await window.gerarLaudoPDF({
+        nome: av.paciente_nome,
+        sexo: av.paciente_sexo,
+        dataNasc: av.paciente_data_nascimento,
+        dataAvaliacao: av.data_avaliacao,
+        acomp: {
+          nome: av.acompanhante_nome,
+          relacao: av.acompanhante_relacao,
+          telefone: av.acompanhante_telefone,
+          email: av.acompanhante_email,
+        },
+        respostas,
+        historico: hist,
+        historicoOutros: hist.descricao_outros || '',
+        scoreOverride: av.score_final,
+      });
+    } catch (err) {
+      console.error('Erro ao reimprimir laudo:', err);
+      alert('Não foi possível gerar o PDF: ' + (err.message || 'erro desconhecido'));
+    } finally {
+      setImprimindo(null);
+    }
+  }
 
   const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
   const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -88,7 +162,12 @@ function RelatoriosSection({ onBack }) {
   const totalSeisMeses = monthData.reduce((s, d) => s + d.val, 0);
   const encSemana = encData.reduce((s, d) => s + d.val, 0);
   const taxaEnc = norm.length ? Math.round(totalEnc / norm.length * 100) : 0;
-  const ultimas = norm.slice(0, 5);
+  // Lista exibida: ao buscar por nome, mostra todas as triagens que casam
+  // (até 50); sem busca, as 5 mais recentes.
+  const nomeQ = nomeF.trim().toLowerCase();
+  const ultimas = nomeQ
+    ? norm.filter(a => (a.nome || '').toLowerCase().includes(nomeQ)).slice(0, 50)
+    : norm.slice(0, 5);
 
   return (
     <div className="anim-fade-in space-y-5">
@@ -103,8 +182,65 @@ function RelatoriosSection({ onBack }) {
       <div>
         <h2 className="font-display text-[28px] leading-none">Relatórios e gráficos</h2>
         <p className="text-[13px] mt-1.5" style={{ color: 'var(--muted)' }}>
-          Atividade clínica e indicadores de triagem
+          {isAdmin
+            ? 'Atividade clínica de toda a equipe e indicadores de triagem'
+            : 'Atividade clínica e indicadores de triagem'}
         </p>
+      </div>
+
+      {/* Filtros */}
+      <div className="rounded-3xl p-4 card-shadow"
+        style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+            <label className="text-[10.5px] font-medium uppercase tracking-[0.12em]" style={{ color: 'var(--muted)' }}>Paciente</label>
+            <input type="text" value={nomeF} placeholder="Buscar por nome do paciente…"
+              onChange={(e) => setNomeF(e.target.value)}
+              className={`${inputCls} focus-ink`} style={inputStyle} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10.5px] font-medium uppercase tracking-[0.12em]" style={{ color: 'var(--muted)' }}>De</label>
+            <input type="date" value={dataInicio} max={dataFim || undefined}
+              onChange={(e) => setDataInicio(e.target.value)}
+              className={`${inputCls} focus-ink`} style={{ ...inputStyle, width: 'auto' }} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10.5px] font-medium uppercase tracking-[0.12em]" style={{ color: 'var(--muted)' }}>Até</label>
+            <input type="date" value={dataFim} min={dataInicio || undefined}
+              onChange={(e) => setDataFim(e.target.value)}
+              className={`${inputCls} focus-ink`} style={{ ...inputStyle, width: 'auto' }} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10.5px] font-medium uppercase tracking-[0.12em]" style={{ color: 'var(--muted)' }}>Sexo</label>
+            <select value={sexoF} onChange={(e) => setSexoF(e.target.value)}
+              className={`${inputCls} focus-ink`} style={{ ...inputStyle, width: 'auto' }}>
+              <option value="">Todos</option>
+              <option value="M">Masculino</option>
+              <option value="F">Feminino</option>
+            </select>
+          </div>
+          {isAdmin && (
+            <div className="flex flex-col gap-1">
+              <label className="text-[10.5px] font-medium uppercase tracking-[0.12em]" style={{ color: 'var(--muted)' }}>Médico</label>
+              <select value={medicoF} onChange={(e) => setMedicoF(e.target.value)}
+                className={`${inputCls} focus-ink`} style={{ ...inputStyle, width: 'auto' }}>
+                <option value="">Todos os médicos</option>
+                {medicos.map((m) => (
+                  <option key={m.id} value={m.id}>{m.nome}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {temFiltro && (
+            <button onClick={limparFiltros}
+              className="text-[12.5px] font-medium lift px-3 py-2.5"
+              style={{ color: 'var(--muted)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--ink)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted)'; }}>
+              Limpar filtros
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Resumo numérico */}
@@ -158,37 +294,62 @@ function RelatoriosSection({ onBack }) {
       {/* Triagens recentes */}
       <div className="rounded-3xl overflow-hidden card-shadow"
         style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
-        <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
-          <h3 className="font-display text-[18px] leading-none">Últimas triagens</h3>
+        <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
+          <h3 className="font-display text-[18px] leading-none">
+            {nomeQ ? 'Triagens encontradas' : 'Últimas triagens'}
+          </h3>
+          {nomeQ && (
+            <span className="text-[11.5px] font-mono" style={{ color: 'var(--muted)' }}>
+              {ultimas.length} resultado{ultimas.length === 1 ? '' : 's'}
+            </span>
+          )}
         </div>
-        {ultimas.length === 0 && (
+        {loading && (
           <div className="px-6 py-6 text-[13px]" style={{ color: 'var(--muted)' }}>
-            Nenhuma triagem finalizada ainda.
+            Carregando…
           </div>
         )}
-        {ultimas.map((t, i, arr) => (
-          <div key={i} className="flex items-center justify-between px-6 py-4"
+        {!loading && ultimas.length === 0 && (
+          <div className="px-6 py-6 text-[13px]" style={{ color: 'var(--muted)' }}>
+            {temFiltro ? 'Nenhuma triagem encontrada para os filtros.' : 'Nenhuma triagem finalizada ainda.'}
+          </div>
+        )}
+        {!loading && ultimas.map((t, i, arr) => (
+          <div key={t.avaliacaoId ?? i} className="flex items-center justify-between px-6 py-4 gap-3"
             style={{ borderBottom: i < arr.length - 1 ? '1px solid var(--hair-soft)' : 'none' }}>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold"
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold flex-shrink-0"
                 style={{ background: 'var(--paper-2)', color: 'var(--ink-2)', border: '1px solid var(--hair)' }}>
                 {t.sexo}
               </div>
-              <div>
-                <div className="text-[13.5px] font-medium">{t.nome}</div>
-                <div className="text-[11px] font-mono" style={{ color: 'var(--muted)' }}>
+              <div className="min-w-0">
+                <div className="text-[13.5px] font-medium truncate">{t.nome}</div>
+                <div className="text-[11px] font-mono truncate" style={{ color: 'var(--muted)' }}>
                   {t.data.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} · {t.data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  {isAdmin && <> · {t.medico}</>}
                 </div>
               </div>
             </div>
-            <div className="text-right">
-              <div className="font-mono num-tabular text-[14px] font-medium"
-                style={{ color: t.encaminha ? 'var(--ink)' : 'var(--subtle)' }}>
-                {t.score.toFixed(2)}
+            <div className="flex items-center gap-4 flex-shrink-0">
+              <div className="text-right">
+                <div className="font-mono num-tabular text-[14px] font-medium"
+                  style={{ color: t.encaminha ? 'var(--ink)' : 'var(--subtle)' }}>
+                  {t.score.toFixed(2)}
+                </div>
+                <div className="text-[10.5px]" style={{ color: 'var(--muted)' }}>
+                  {t.encaminha ? 'Encaminhar' : 'Baixo risco'}
+                </div>
               </div>
-              <div className="text-[10.5px]" style={{ color: 'var(--muted)' }}>
-                {t.encaminha ? 'Encaminhar' : 'Baixo risco'}
-              </div>
+              <button onClick={() => imprimirLaudo(t.avaliacaoId)}
+                disabled={imprimindo === t.avaliacaoId || !t.avaliacaoId}
+                title="Imprimir laudo PDF"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium lift"
+                style={{ border: '1px solid var(--hair)', color: 'var(--ink)',
+                  opacity: imprimindo === t.avaliacaoId ? 0.6 : 1 }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--ink)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--hair)'; }}>
+                {imprimindo === t.avaliacaoId ? 'Gerando…' : <>{Icon.print} PDF</>}
+              </button>
             </div>
           </div>
         ))}
@@ -382,10 +543,10 @@ function ParametrosScoreSection({ onBack }) {
 // ═══════════════════════════════════════════════════════════════════════
 // PÁGINA PRINCIPAL DE CONFIG
 // ═══════════════════════════════════════════════════════════════════════
-function ConfigPage() {
+function ConfigPage({ usuario }) {
   const [sub, setSub] = useState(null); // null | 'relatorios' | 'modelos' | 'parametros'
 
-  if (sub === 'relatorios') return <RelatoriosSection onBack={() => setSub(null)} />;
+  if (sub === 'relatorios') return <RelatoriosSection usuario={usuario} onBack={() => setSub(null)} />;
   if (sub === 'modelos') return <ModelosImpressosSection onBack={() => setSub(null)} />;
   if (sub === 'parametros') return <ParametrosScoreSection onBack={() => setSub(null)} />;
 

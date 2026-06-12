@@ -83,7 +83,7 @@ function App() {
           {page === 'agenda'       && <AgendaPage usuario={usuario} />}
           {page === 'triagem'      && <TriagemPage onNav={nav} usuario={usuario} />}
           {page === 'pacientes'    && <PacientesPage usuario={usuario} abrirPacienteId={navPayload?.pacienteId || null} />}
-          {page === 'config'       && <ConfigPage />}
+          {page === 'config'       && <ConfigPage usuario={usuario} />}
           {page === 'usuarios'     && usuario?.tipo === 'admin' && <UsuariosPage usuario={usuario} />}
         </main>
         <footer className="px-10 py-8 text-center" style={{ color: 'var(--subtle)' }}>

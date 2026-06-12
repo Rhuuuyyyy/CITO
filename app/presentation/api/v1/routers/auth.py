@@ -34,14 +34,14 @@ async def login(
             detail="Muitas tentativas de login. Tente novamente em 10 minutos.",
         )
 
-    auth_result = await auth_service.authenticate_doctor(
+    auth_user = await auth_service.authenticate_doctor(
         email=form_data.username,
         senha_plain=form_data.password,
     )
 
-    sucesso = auth_result is not None
-    usuario_id: int | None = auth_result[0] if auth_result else None
-    tipo: str | None = auth_result[1] if auth_result else None
+    sucesso = auth_user is not None
+    usuario_id: int | None = auth_user.usuario_id if auth_user else None
+    tipo: str | None = auth_user.tipo if auth_user else None
     sessao_id: int | None = None
 
     if sucesso and usuario_id is not None:
@@ -84,6 +84,9 @@ async def login(
         sessao_id=sessao_id,
         usuario_id=usuario_id,
         tipo=tipo,
+        nome=auth_user.nome if auth_user else None,
+        crm=auth_user.crm if auth_user else None,
+        especialidade=auth_user.especialidade if auth_user else None,
     )
 
 

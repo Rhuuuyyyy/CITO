@@ -22,8 +22,10 @@ class GetEvaluationDetailUseCase:
         *,
         avaliacao_id: int,
         usuario_id: int,
+        is_admin: bool = False,
     ) -> AvaliacaoFullDetail | None:
         return await self._avaliacoes.get_full(
             avaliacao_id=avaliacao_id,
             usuario_id=usuario_id,
+            is_admin=is_admin,
         )

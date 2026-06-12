@@ -43,16 +43,24 @@ class GetPatientListUseCase:
         self,
         *,
         usuario_id: int,
+        is_admin: bool = False,
+        medico_id: int | None = None,
         nome_filter: str | None = None,
         cpf_raw_filter: str | None = None,
         incluir_inativos: bool = False,
         limit: int = 50,
         offset: int = 0,
     ) -> PatientListResult:
-        """Fetch paginated patient list for one doctor.
+        """Fetch paginated patient list.
+
+        RBAC:
+            - Médico comum: vê apenas os pacientes que cadastrou.
+            - Admin: vê todos; pode opcionalmente filtrar por um médico (medico_id).
 
         Args:
-            usuario_id: Authenticated doctor's DB integer id.
+            usuario_id: Authenticated user's DB integer id.
+            is_admin: True quando o solicitante é admin (vê todos).
+            medico_id: Filtro opcional por médico (apenas admin).
             nome_filter: Optional partial name search term.
             cpf_raw_filter: Optional raw CPF digits (will be hashed internally).
             limit: Page size; capped at HARD_LIMIT.
@@ -64,19 +72,22 @@ class GetPatientListUseCase:
         if limit > self.HARD_LIMIT:
             limit = self.HARD_LIMIT
 
+        # Escopo efetivo: admin → todos (ou um médico escolhido); médico → só os seus.
+        restrict_to = medico_id if is_admin else usuario_id
+
         # Hash CPF here — repository never sees raw digits.
         cpf_hash_filter: str | None = None
         if cpf_raw_filter:
             cpf_hash_filter = CPF(cpf_raw_filter).sha256_hex
 
         total = await self._patients.count_by_doctor(
-            usuario_id=usuario_id,
+            restrict_to_usuario_id=restrict_to,
             nome_filter=nome_filter,
             cpf_hash_filter=cpf_hash_filter,
             incluir_inativos=incluir_inativos,
         )
         items = await self._patients.list_by_doctor(
-            usuario_id=usuario_id,
+            restrict_to_usuario_id=restrict_to,
             nome_filter=nome_filter,
             cpf_hash_filter=cpf_hash_filter,
             incluir_inativos=incluir_inativos,

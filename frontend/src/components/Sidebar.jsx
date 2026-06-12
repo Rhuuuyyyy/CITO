@@ -3,6 +3,16 @@
 // ═══════════════════════════════════════════════════════════════════════
 function Sidebar({ active, onNav, open, onClose, onLogout, usuario }) {
   const isAdmin = usuario?.tipo === 'admin';
+
+  // Identidade da conta logada (nome real vindo do login, não estático).
+  const nomeUsuario = usuario?.nome || (isAdmin ? 'Administrador' : 'Médico');
+  const iniciais = (nomeUsuario.trim().split(/\s+/).filter(Boolean).slice(0, 2)
+    .map((p) => p[0]).join('') || 'U').toUpperCase();
+  const subtitulo = [
+    usuario?.especialidade,
+    usuario?.crm ? `CRM ${usuario.crm}` : null,
+    isAdmin ? 'Administrador' : null,
+  ].filter(Boolean).join(' · ') || (isAdmin ? 'Administrador' : 'Médico');
   const sections = [
     {
       label: 'Painel', items: [
@@ -72,10 +82,10 @@ function Sidebar({ active, onNav, open, onClose, onLogout, usuario }) {
           <div className="rounded-2xl p-3.5" style={{ background: 'var(--surface)', border: '1px solid var(--hair)' }}>
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-semibold"
-                style={{ background: 'var(--ink)', color: 'var(--on-ink)' }}>AM</div>
+                style={{ background: 'var(--ink)', color: 'var(--on-ink)' }}>{iniciais}</div>
               <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium truncate" style={{ color: 'var(--ink)' }}>Dr. Antônia Mello</div>
-                <div className="text-[11px]" style={{ color: 'var(--muted)' }}>Clínica Geral · CRM 28941</div>
+                <div className="text-[13px] font-medium truncate" style={{ color: 'var(--ink)' }}>{nomeUsuario}</div>
+                <div className="text-[11px] truncate" style={{ color: 'var(--muted)' }}>{subtitulo}</div>
               </div>
             </div>
             <button onClick={onLogout}

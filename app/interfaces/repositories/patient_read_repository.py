@@ -25,6 +25,7 @@ class PatientListItem:
     ultima_avaliacao: str | None
     recomenda_exame: bool | None
     ativo: bool
+    medico: str | None = None
 
 
 @dataclass(frozen=True)
@@ -49,12 +50,10 @@ class PatientDetail:
     idade_anos: int | None
     cpf_hash: str | None
     etnia: str | None
-    uf_nascimento: str | None
+    telefone: str | None
     municipio_residencia: str | None
     uf_residencia: str | None
     prematuro: bool | None
-    idade_gestacional_semanas: int | None
-    peso_nascimento_gramas: int | None
     escolaridade: str | None
     tem_diagnostico_autismo: bool | None
     tem_diagnostico_tdah: bool | None
@@ -74,19 +73,22 @@ class PatientReadRepository:
     async def list_by_doctor(
         self,
         *,
-        usuario_id: int,
+        restrict_to_usuario_id: int | None,
         nome_filter: str | None = None,
         cpf_hash_filter: str | None = None,
         incluir_inativos: bool = False,
         limit: int = 50,
         offset: int = 0,
     ) -> list[PatientListItem]:
-        conditions = ["p.criado_por = :usuario_id"]
+        # restrict_to_usuario_id None → admin vê todos os pacientes.
+        conditions: list[str] = []
         params: dict[str, object] = {
-            "usuario_id": usuario_id,
             "limit": limit,
             "offset": offset,
         }
+        if restrict_to_usuario_id is not None:
+            conditions.append("p.criado_por = :usuario_id")
+            params["usuario_id"] = restrict_to_usuario_id
         if not incluir_inativos:
             conditions.append("p.ativo = TRUE")
         if nome_filter:
@@ -96,7 +98,7 @@ class PatientReadRepository:
             conditions.append("p.cpf_hash = :cpf_hash_filter")
             params["cpf_hash_filter"] = cpf_hash_filter
 
-        where_clause = " AND ".join(conditions)
+        where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
         result = await self._session.execute(
             text(
                 f"""
@@ -105,7 +107,8 @@ class PatientReadRepository:
                        p.sexo,
                        TO_CHAR(p.data_nascimento, 'YYYY-MM-DD') AS data_nascimento,
                        p.cpf_hash,
-                       ac.telefone,
+                       ptel.telefone,
+                       med.nome AS medico,
                        -- Total de acompanhantes DISTINTOS do paciente: o do
                        -- cadastro + os registrados em cada triagem (modelo B).
                        (
@@ -124,7 +127,8 @@ class PatientReadRepository:
                        ult.recomenda_exame,
                        p.ativo
                 FROM   pacientes p
-                LEFT JOIN acompanhantes ac ON ac.id = p.acompanhante_id
+                JOIN   tb_pacientes ptel ON ptel.id = p.id
+                LEFT JOIN usuarios med ON med.id = p.criado_por
                 LEFT JOIN LATERAL (
                     SELECT a.score_final, a.data_avaliacao, a.recomenda_exame
                     FROM   avaliacoes a
@@ -133,7 +137,7 @@ class PatientReadRepository:
                     ORDER  BY a.data_avaliacao DESC
                     LIMIT  1
                 ) ult ON TRUE
-                WHERE  {where_clause}
+                {where_clause}
                 ORDER  BY p.id DESC
                 LIMIT  :limit OFFSET :offset
                 """
@@ -154,6 +158,7 @@ class PatientReadRepository:
                 ultima_avaliacao=str(r["ultima_avaliacao"]) if r["ultima_avaliacao"] else None,
                 recomenda_exame=bool(r["recomenda_exame"]) if r["recomenda_exame"] is not None else None,
                 ativo=bool(r["ativo"]),
+                medico=str(r["medico"]) if r["medico"] else None,
             )
             for r in rows
         ]
@@ -162,25 +167,35 @@ class PatientReadRepository:
         self,
         *,
         paciente_id: int,
-        usuario_id: int,
+        restrict_to_usuario_id: int | None,
     ) -> PatientDetail | None:
-        """Full record of one patient owned by the doctor, with caregiver(s)."""
+        """Full record of one patient, with caregiver(s).
+
+        ``restrict_to_usuario_id`` scopes the lookup to the owning doctor; when
+        ``None`` (admin) any patient can be opened.
+        """
+        params: dict[str, object] = {"paciente_id": paciente_id}
+        owner_clause = ""
+        if restrict_to_usuario_id is not None:
+            owner_clause = "AND p.criado_por = :usuario_id"
+            params["usuario_id"] = restrict_to_usuario_id
         result = await self._session.execute(
             text(
-                """
+                f"""
                 SELECT p.id, p.nome, p.sexo,
                        TO_CHAR(p.data_nascimento, 'YYYY-MM-DD') AS data_nascimento,
                        p.idade_anos, p.cpf_hash,
-                       p.etnia, p.uf_nascimento, p.municipio_residencia, p.uf_residencia,
-                       p.prematuro, p.idade_gestacional_semanas, p.peso_nascimento_gramas,
+                       p.etnia, ptel.telefone, p.municipio_residencia, p.uf_residencia,
+                       p.prematuro,
                        p.escolaridade, p.tem_diagnostico_autismo, p.tem_diagnostico_tdah,
                        p.outras_comorbidades, p.medicamentos_uso,
                        p.diagnostico_confirmado_fxs
                 FROM   pacientes p
-                WHERE  p.id = :paciente_id AND p.criado_por = :usuario_id
+                JOIN   tb_pacientes ptel ON ptel.id = p.id
+                WHERE  p.id = :paciente_id {owner_clause}
                 """
             ),
-            {"paciente_id": paciente_id, "usuario_id": usuario_id},
+            params,
         )
         r = result.mappings().first()
         if r is None:
@@ -239,12 +254,10 @@ class PatientReadRepository:
             idade_anos=_num(r["idade_anos"]),
             cpf_hash=_str(r["cpf_hash"]),
             etnia=_str(r["etnia"]),
-            uf_nascimento=_str(r["uf_nascimento"]),
+            telefone=_str(r["telefone"]),
             municipio_residencia=_str(r["municipio_residencia"]),
             uf_residencia=_str(r["uf_residencia"]),
             prematuro=_bool(r["prematuro"]),
-            idade_gestacional_semanas=_num(r["idade_gestacional_semanas"]),
-            peso_nascimento_gramas=_num(r["peso_nascimento_gramas"]),
             escolaridade=_str(r["escolaridade"]),
             tem_diagnostico_autismo=_bool(r["tem_diagnostico_autismo"]),
             tem_diagnostico_tdah=_bool(r["tem_diagnostico_tdah"]),
@@ -257,13 +270,16 @@ class PatientReadRepository:
     async def count_by_doctor(
         self,
         *,
-        usuario_id: int,
+        restrict_to_usuario_id: int | None,
         nome_filter: str | None = None,
         cpf_hash_filter: str | None = None,
         incluir_inativos: bool = False,
     ) -> int:
-        conditions = ["criado_por = :usuario_id"]
-        params: dict[str, object] = {"usuario_id": usuario_id}
+        conditions: list[str] = []
+        params: dict[str, object] = {}
+        if restrict_to_usuario_id is not None:
+            conditions.append("criado_por = :usuario_id")
+            params["usuario_id"] = restrict_to_usuario_id
         if not incluir_inativos:
             conditions.append("ativo = TRUE")
         if nome_filter:
@@ -273,9 +289,9 @@ class PatientReadRepository:
             conditions.append("cpf_hash = :cpf_hash_filter")
             params["cpf_hash_filter"] = cpf_hash_filter
 
-        where_clause = " AND ".join(conditions)
+        where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
         result = await self._session.execute(
-            text(f"SELECT COUNT(*) AS total FROM pacientes WHERE {where_clause}"),
+            text(f"SELECT COUNT(*) AS total FROM pacientes {where_clause}"),
             params,
         )
         row = result.mappings().first()

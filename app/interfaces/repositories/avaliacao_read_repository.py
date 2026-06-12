@@ -76,10 +76,12 @@ class AvaliacaoReadRepository:
         usuario_id: int,
         limit: int = 50,
         offset: int = 0,
+        is_admin: bool = False,
     ) -> list[AvaliacaoHistoricoItem]:
+        owner_clause = "" if is_admin else "AND p.criado_por = :usuario_id"
         result = await self._session.execute(
             text(
-                """
+                f"""
                 SELECT a.id          AS avaliacao_id,
                        a.paciente_id,
                        a.usuario_id,
@@ -89,7 +91,7 @@ class AvaliacaoReadRepository:
                 FROM   avaliacoes a
                 JOIN   pacientes  p ON p.id = a.paciente_id
                 WHERE  a.paciente_id = :paciente_id
-                  AND  p.criado_por  = :usuario_id
+                  {owner_clause}
                 ORDER  BY a.data_avaliacao ASC
                 LIMIT  :limit OFFSET :offset
                 """
@@ -119,15 +121,18 @@ class AvaliacaoReadRepository:
         *,
         avaliacao_id: int,
         usuario_id: int,
+        is_admin: bool = False,
     ) -> AvaliacaoFullDetail | None:
         """Full evaluation (patient, caregiver, symptoms, family history).
 
-        Scoped to the requesting doctor through ``pacientes.criado_por``; returns
-        ``None`` when the evaluation does not exist or belongs to another doctor.
+        Scoped to the requesting doctor through ``pacientes.criado_por`` unless
+        ``is_admin`` (admins may read any evaluation); returns ``None`` when the
+        evaluation does not exist or is out of scope.
         """
+        owner_clause = "" if is_admin else "AND p.criado_por = :usuario_id"
         head = await self._session.execute(
             text(
-                """
+                f"""
                 SELECT a.id AS avaliacao_id, a.data_avaliacao,
                        a.score_final, a.recomenda_exame,
                        p.nome AS paciente_nome, p.sexo AS paciente_sexo,
@@ -142,7 +147,7 @@ class AvaliacaoReadRepository:
                 -- antigas), cai no acompanhante atual do paciente.
                 LEFT JOIN acompanhantes ac
                        ON ac.id = COALESCE(ta.acompanhante_id, p.acompanhante_id)
-                WHERE  a.id = :avaliacao_id AND p.criado_por = :usuario_id
+                WHERE  a.id = :avaliacao_id {owner_clause}
                 """
             ),
             {"avaliacao_id": avaliacao_id, "usuario_id": usuario_id},
@@ -228,15 +233,17 @@ class AvaliacaoReadRepository:
         *,
         paciente_id: int,
         usuario_id: int,
+        is_admin: bool = False,
     ) -> int:
+        owner_clause = "" if is_admin else "AND p.criado_por = :usuario_id"
         result = await self._session.execute(
             text(
-                """
+                f"""
                 SELECT COUNT(*) AS total
                 FROM   avaliacoes a
                 JOIN   pacientes  p ON p.id = a.paciente_id
                 WHERE  a.paciente_id = :paciente_id
-                  AND  p.criado_por  = :usuario_id
+                  {owner_clause}
                 """
             ),
             {"paciente_id": paciente_id, "usuario_id": usuario_id},

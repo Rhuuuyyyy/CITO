@@ -91,29 +91,35 @@ class DashboardRepository:
             for r in rows
         ]
 
-    async def get_summary(self, *, usuario_id: int) -> DashboardSummary:
+    async def get_summary(
+        self, *, usuario_id: int, is_admin: bool = False
+    ) -> DashboardSummary:
+        # Admin vê os números globais; o médico só dos seus pacientes.
+        pac_clause = "" if is_admin else "WHERE criado_por = :usuario_id"
+        aval_clause = "" if is_admin else "p.criado_por = :usuario_id AND"
+        aval_clause_only = "" if is_admin else "WHERE p.criado_por = :usuario_id"
         result = await self._session.execute(
             text(
-                """
+                f"""
                 SELECT
                     (
                         SELECT COUNT(*)
                         FROM   pacientes
-                        WHERE  criado_por = :usuario_id
+                        {pac_clause}
                     ) AS total_pacientes,
                     (
                         SELECT COUNT(*)
                         FROM   avaliacoes a
                         JOIN   pacientes  p ON p.id = a.paciente_id
-                        WHERE  p.criado_por      = :usuario_id
-                          AND  a.data_avaliacao::DATE = CURRENT_DATE
+                        WHERE  {aval_clause}
+                               a.data_avaliacao::DATE = CURRENT_DATE
                     ) AS avaliacoes_hoje,
                     (
                         SELECT COUNT(*)
                         FROM   avaliacoes a
                         JOIN   pacientes  p ON p.id = a.paciente_id
-                        WHERE  p.criado_por    = :usuario_id
-                          AND  a.data_avaliacao >= CURRENT_DATE - INTERVAL '7 days'
+                        WHERE  {aval_clause}
+                               a.data_avaliacao >= CURRENT_DATE - INTERVAL '7 days'
                     ) AS avaliacoes_semana,
                     (
                         SELECT ROUND(
@@ -122,7 +128,7 @@ class DashboardRepository:
                         )
                         FROM   avaliacoes a
                         JOIN   pacientes  p ON p.id = a.paciente_id
-                        WHERE  p.criado_por = :usuario_id
+                        {aval_clause_only}
                     ) AS taxa_recomendacao_exame
                 """
             ),

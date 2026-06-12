@@ -21,15 +21,31 @@ const ESCOLARIDADES = [
 const selectArrow = "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6862' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>\")";
 
 // ── Modal de cadastro ────────────────────────────────────────────────
-function ModalCadastroPaciente({ onClose, onSalvar }) {
+function ModalCadastroPaciente({ onClose, onSalvar, onSalvarEdicao, pacienteEdit }) {
+  const isEdit = !!pacienteEdit;
   const [aba, setAba]         = useState('paciente');
+  const [salvandoEdit, setSalvandoEdit] = useState(false);
   const [errors, setErrors]   = useState({});
-  const [paciente, setPac]    = useState({
+  const [paciente, setPac]    = useState(() => (isEdit ? {
+    nome: pacienteEdit.nome || '',
+    dataNasc: pacienteEdit.data_nascimento || '',
+    sexo: pacienteEdit.sexo || '',
+    cpf: '',                       // não pré-preenchível (vem mascarado)
+    celular: pacienteEdit.telefone || '', email: '',
+    etnia: pacienteEdit.etnia || '',
+    escolaridade: pacienteEdit.escolaridade || '',
+    prematuro: !!pacienteEdit.prematuro,
+    tem_diagnostico_autismo: !!pacienteEdit.tem_diagnostico_autismo,
+    tem_diagnostico_tdah: !!pacienteEdit.tem_diagnostico_tdah,
+    outras_comorbidades: pacienteEdit.outras_comorbidades || '',
+    medicamentos_uso: pacienteEdit.medicamentos_uso || '',
+    diagnostico_confirmado_fxs: !!pacienteEdit.diagnostico_confirmado_fxs,
+  } : {
     nome: '', dataNasc: '', sexo: '', cpf: '', celular: '', email: '',
     etnia: '', escolaridade: '', prematuro: false,
     tem_diagnostico_autismo: false, tem_diagnostico_tdah: false,
     outras_comorbidades: '', medicamentos_uso: '',
-  });
+  }));
   const [acomps, setAcomps]   = useState([acompVazio()]);
   const [fotoBase64, setFotoBase64] = useState(null);
   const [modalFoto, setModalFoto]   = useState(false);
@@ -39,9 +55,44 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
     if (!paciente.nome.trim()) e.nome     = 'Obrigatório.';
     if (!paciente.dataNasc)    e.dataNasc = 'Obrigatório.';
     if (!paciente.sexo)        e.sexo     = 'Obrigatório.';
-    if (!paciente.cpf.trim())  e.cpf      = 'Obrigatório.';
+    // Na edição o CPF é opcional (em branco = mantém o atual).
+    if (!isEdit && !paciente.cpf.trim()) e.cpf = 'Obrigatório.';
     setErrors(e);
     return Object.keys(e).length === 0;
+  }
+
+  async function salvarEdicao() {
+    if (!validarPaciente()) return;
+    const p = paciente;
+    const body = {
+      nome: p.nome,
+      data_nascimento: p.dataNasc,
+      sexo: p.sexo,
+      etnia: p.etnia || null,
+      escolaridade: p.escolaridade || null,
+      prematuro: p.prematuro,
+      tem_diagnostico_autismo: p.tem_diagnostico_autismo,
+      tem_diagnostico_tdah: p.tem_diagnostico_tdah,
+      outras_comorbidades: p.outras_comorbidades?.trim() || null,
+      medicamentos_uso: p.medicamentos_uso?.trim() || null,
+      diagnostico_confirmado_fxs: p.diagnostico_confirmado_fxs,
+      telefone: p.celular?.trim() || null,
+      // Preserva campos fora do formulário para não apagá-los.
+      municipio_residencia: pacienteEdit.municipio_residencia || null,
+      uf_residencia: pacienteEdit.uf_residencia || null,
+    };
+    const cpfDigits = (p.cpf || '').replace(/\D/g, '');
+    if (cpfDigits.length === 11) body.cpf = cpfDigits;  // só envia se digitou novo
+    setSalvandoEdit(true);
+    try {
+      await onSalvarEdicao(body);
+      onClose();
+    } catch (err) {
+      console.error('Erro ao editar paciente:', err);
+      alert('Não foi possível salvar as alterações: ' + (err.message || 'erro desconhecido'));
+    } finally {
+      setSalvandoEdit(false);
+    }
   }
 
   function validarAcomps() {
@@ -104,9 +155,9 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
         <div className="flex items-center justify-between px-7 pt-7 pb-5"
           style={{ borderBottom: '1px solid var(--hair-soft)' }}>
           <div>
-            <h2 className="font-display text-[26px] leading-none">Novo paciente</h2>
+            <h2 className="font-display text-[26px] leading-none">{isEdit ? 'Editar paciente' : 'Novo paciente'}</h2>
             <p className="text-[12.5px] mt-1" style={{ color: 'var(--muted)' }}>
-              Cadastre o paciente e seus acompanhantes
+              {isEdit ? 'Atualize os dados do paciente' : 'Cadastre o paciente e seus acompanhantes'}
             </p>
           </div>
           <button onClick={onClose}
@@ -118,7 +169,8 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
           </button>
         </div>
 
-        {/* Abas */}
+        {/* Abas (ocultas na edição — acompanhantes são geridos por triagem) */}
+        {!isEdit && (
         <div className="flex px-7 pt-4 gap-1" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
           {[
             { id: 'paciente',      label: 'Paciente' },
@@ -139,6 +191,7 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
             </button>
           ))}
         </div>
+        )}
 
         {/* Conteúdo */}
         <div className="flex-1 overflow-y-auto px-7 py-6">
@@ -147,7 +200,8 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
           {aba === 'paciente' && (
             <div className="space-y-1">
 
-              {/* Foto */}
+              {/* Foto (na edição, a foto é alterada pelo avatar do prontuário) */}
+              {!isEdit && (
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center"
                   style={{ border: '1px solid var(--hair)', background: 'var(--paper-2)' }}>
@@ -171,6 +225,7 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
                   )}
                 </div>
               </div>
+              )}
 
               {/* Modal de captura */}
               {modalFoto && (
@@ -213,9 +268,9 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <Field label="CPF" required error={errors.cpf}>
+                <Field label="CPF" required={!isEdit} error={errors.cpf}>
                   <input className={`${inputCls} focus-ink font-mono`} style={inputStyle}
-                    type="text" placeholder="000.000.000-00"
+                    type="text" placeholder={isEdit ? 'Em branco = manter atual' : '000.000.000-00'}
                     value={paciente.cpf}
                     onChange={(e) => { setPac({ ...paciente, cpf: fmtCpf(e.target.value) }); if (errors.cpf) setErrors((v) => ({ ...v, cpf: '' })); }} />
                 </Field>
@@ -265,6 +320,7 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
                     ['prematuro',               'Prematuro (<37 sem.)'],
                     ['tem_diagnostico_autismo',  'Diagnóstico de autismo'],
                     ['tem_diagnostico_tdah',     'Diagnóstico de TDAH'],
+                    ...(isEdit ? [['diagnostico_confirmado_fxs', 'FXS confirmado']] : []),
                   ].map(([campo, lab]) => (
                     <button key={campo} type="button"
                       onClick={() => setPac((p) => ({ ...p, [campo]: !p[campo] }))}
@@ -379,19 +435,27 @@ function ModalCadastroPaciente({ onClose, onSalvar }) {
           style={{ borderTop: '1px solid var(--hair-soft)' }}>
           <BtnGhost onClick={onClose}>Cancelar</BtnGhost>
           <div className="flex items-center gap-2">
-            {aba === 'paciente' && (
-              <BtnPrimary onClick={irParaAcomps}>
-                Próximo — Acompanhantes {Icon.chevronRight}
+            {isEdit ? (
+              <BtnPrimary onClick={salvarEdicao} disabled={salvandoEdit}>
+                {salvandoEdit ? 'Salvando…' : <>{Icon.check} Salvar alterações</>}
               </BtnPrimary>
-            )}
-            {aba === 'acompanhantes' && (
+            ) : (
               <>
-                <BtnGhost onClick={() => { setAba('paciente'); setErrors({}); }}>
-                  {Icon.chevronLeft} Voltar
-                </BtnGhost>
-                <BtnPrimary onClick={salvar}>
-                  {Icon.check} Salvar cadastro
-                </BtnPrimary>
+                {aba === 'paciente' && (
+                  <BtnPrimary onClick={irParaAcomps}>
+                    Próximo — Acompanhantes {Icon.chevronRight}
+                  </BtnPrimary>
+                )}
+                {aba === 'acompanhantes' && (
+                  <>
+                    <BtnGhost onClick={() => { setAba('paciente'); setErrors({}); }}>
+                      {Icon.chevronLeft} Voltar
+                    </BtnGhost>
+                    <BtnPrimary onClick={salvar}>
+                      {Icon.check} Salvar cadastro
+                    </BtnPrimary>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -409,7 +473,7 @@ const ProntInfo = ({ label, valor }) => (
   </div>
 );
 
-function ModalProntuario({ paciente, onClose, onChanged }) {
+function ModalProntuario({ paciente, onClose, onChanged, onEditar }) {
   const [detalhe, setDetalhe]       = useState(null);
   const [avaliacoes, setAvaliacoes] = useState([]);
   const [loading, setLoading]       = useState(true);
@@ -645,7 +709,12 @@ function ModalProntuario({ paciente, onClose, onChanged }) {
               Excluir
             </button>
           </div>
-          <BtnGhost onClick={onClose}>Fechar</BtnGhost>
+          <div className="flex items-center gap-2">
+            <BtnGhost onClick={onClose}>Fechar</BtnGhost>
+            <BtnPrimary onClick={() => detalhe && onEditar && onEditar(detalhe)} disabled={!detalhe}>
+              {Icon.edit} Editar
+            </BtnPrimary>
+          </div>
         </div>
       </div>
 
@@ -693,12 +762,24 @@ function ModalProntuario({ paciente, onClose, onChanged }) {
 // PÁGINA PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════
 function PacientesPage({ usuario, abrirPacienteId }) {
+  const isAdmin = usuario?.tipo === 'admin';
   const [q, setQ]               = useState('');
   const [modal, setModal]       = useState(false);
   const [pacientes, setPacientes] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [prontuario, setProntuario] = useState(null);
+  const [editando, setEditando] = useState(null);  // detalhe do paciente em edição
   const [mostrarArquivados, setMostrarArquivados] = useState(false);
+  const [medicoF, setMedicoF]   = useState('');   // '' = todos (admin)
+  const [medicos, setMedicos]   = useState([]);   // lista p/ o filtro (admin)
+
+  // Admin: carrega a lista de médicos para o seletor de filtro.
+  useEffect(() => {
+    if (!isAdmin) return;
+    api.getUsuarios()
+      .then((us) => setMedicos((us || []).filter((u) => u.ativo !== false)))
+      .catch((err) => console.error('Erro ao carregar médicos:', err));
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!abrirPacienteId) return;
@@ -712,7 +793,9 @@ function PacientesPage({ usuario, abrirPacienteId }) {
   async function carregarPacientes(params) {
     setLoading(true);
     try {
-      const data = await api.getPacientes({ ...params, incluir_inativos: mostrarArquivados });
+      const extra = { incluir_inativos: mostrarArquivados };
+      if (isAdmin && medicoF) extra.medico_id = medicoF;
+      const data = await api.getPacientes({ ...params, ...extra });
       setPacientes((data.items || []).map(p => {
         const [y, m, d] = (p.data_nascimento || '').split('-');
         const score = p.ultimo_score != null ? Number(p.ultimo_score) : 0;
@@ -720,6 +803,7 @@ function PacientesPage({ usuario, abrirPacienteId }) {
           id:    p.id,
           nome:  p.nome || '—',
           sexo:  p.sexo,
+          medico: p.medico || '—',
           nasc:  d ? `${d}/${m}/${y}` : '—',
           cpf:   p.cpf_masked || '—',
           cel:   p.telefone || '—',
@@ -748,7 +832,7 @@ function PacientesPage({ usuario, abrirPacienteId }) {
       else                        carregarPacientes();
     }, 300);
     return () => clearTimeout(handle);
-  }, [q, mostrarArquivados]);
+  }, [q, mostrarArquivados, medicoF]);
 
   async function handleSalvar({ paciente: p, acompanhantes, fotoBase64 }) {
     const a = acompanhantes[0];
@@ -757,6 +841,7 @@ function PacientesPage({ usuario, abrirPacienteId }) {
       cpf: (p.cpf || '').replace(/\D/g, '') || null,
       data_nascimento: p.dataNasc,
       sexo: p.sexo,
+      telefone: p.celular?.trim() || null,
       etnia: p.etnia || null,
       escolaridade: p.escolaridade || null,
       prematuro: p.prematuro,
@@ -830,6 +915,17 @@ function PacientesPage({ usuario, abrirPacienteId }) {
               className="w-full rounded-2xl pl-11 pr-4 py-3 text-[14px] outline-none focus-ink lift"
               style={inputStyle} />
           </div>
+          {isAdmin && (
+            <select value={medicoF} onChange={(e) => setMedicoF(e.target.value)}
+              className={`${inputCls} focus-ink appearance-none`}
+              style={{ ...inputStyle, width: 'auto', backgroundImage: selectArrow,
+                backgroundRepeat: 'no-repeat', backgroundPosition: 'right 14px center', paddingRight: '36px' }}>
+              <option value="">Todos os médicos</option>
+              {medicos.map((m) => (
+                <option key={m.id} value={m.id}>{m.nome}</option>
+              ))}
+            </select>
+          )}
           <BtnGhost onClick={() => setMostrarArquivados((v) => !v)}>
             {mostrarArquivados ? 'Ocultar arquivados' : 'Mostrar arquivados'}
           </BtnGhost>
@@ -854,7 +950,7 @@ function PacientesPage({ usuario, abrirPacienteId }) {
           <table className="w-full">
             <thead>
               <tr style={{ background: 'var(--paper-2)' }}>
-                {['#', 'Paciente', 'Nascimento', 'CPF', 'Celular', 'Acomp.', 'Último escore', 'Status', 'Ações'].map((h, i) => (
+                {['#', 'Paciente', ...(isAdmin ? ['Médico'] : []), 'Nascimento', 'CPF', 'Celular', 'Acomp.', 'Último escore', 'Status', 'Ações'].map((h, i) => (
                   <th key={i} className="px-5 py-3 text-left text-[10.5px] font-medium uppercase tracking-[0.14em]"
                     style={{ color: 'var(--muted)', borderBottom: '1px solid var(--hair-soft)' }}>{h}</th>
                 ))}
@@ -879,6 +975,9 @@ function PacientesPage({ usuario, abrirPacienteId }) {
                       </span>
                     )}
                   </td>
+                  {isAdmin && (
+                    <td className="px-5 py-4 text-[12.5px]" style={{ color: 'var(--muted)' }}>{p.medico}</td>
+                  )}
                   <td className="px-5 py-4 text-[12.5px] font-mono" style={{ color: 'var(--ink-2)' }}>{p.nasc}</td>
                   <td className="px-5 py-4 text-[12.5px] font-mono" style={{ color: 'var(--muted)' }}>{p.cpf}</td>
                   <td className="px-5 py-4 text-[12.5px] font-mono" style={{ color: 'var(--ink-2)' }}>{p.cel}</td>
@@ -931,6 +1030,19 @@ function PacientesPage({ usuario, abrirPacienteId }) {
           paciente={prontuario}
           onClose={() => setProntuario(null)}
           onChanged={() => { setProntuario(null); carregarPacientes(); }}
+          onEditar={(det) => { setProntuario(null); setEditando(det); }}
+        />
+      )}
+
+      {/* Edição de paciente */}
+      {editando && (
+        <ModalCadastroPaciente
+          pacienteEdit={editando}
+          onClose={() => setEditando(null)}
+          onSalvarEdicao={async (body) => {
+            await api.updatePaciente(editando.id, body);
+            await carregarPacientes();
+          }}
         />
       )}
     </div>

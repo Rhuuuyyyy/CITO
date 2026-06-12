@@ -97,8 +97,15 @@ const api = {
       try { const d = await res.json(); detail = d.detail || detail; } catch (e) {}
       const err = new Error(detail); err.status = res.status; throw err;
     }
-    const data = await res.json(); // {access_token, token_type, sessao_id, usuario_id, tipo}
-    const user = { id: data.usuario_id, sessao_id: data.sessao_id, tipo: data.tipo };
+    const data = await res.json(); // {access_token, ..., usuario_id, tipo, nome, crm, especialidade}
+    const user = {
+      id: data.usuario_id,
+      sessao_id: data.sessao_id,
+      tipo: data.tipo,
+      nome: data.nome,
+      crm: data.crm,
+      especialidade: data.especialidade,
+    };
     this.setSession(data.access_token, user);
     return user;
   },
@@ -124,6 +131,7 @@ const api = {
     if (params) {
       if (params.nome) qs.set('nome', params.nome);
       if (params.cpf) qs.set('cpf', params.cpf);
+      if (params.medico_id) qs.set('medico_id', params.medico_id);
       if (params.incluir_inativos) qs.set('incluir_inativos', 'true');
       if (params.limit) qs.set('limit', params.limit);
       if (params.offset != null) qs.set('offset', params.offset);
@@ -132,6 +140,7 @@ const api = {
     return this.get('/pacientes' + (q ? '?' + q : ''));
   },
   createPaciente(body) { return this.post('/pacientes', body); },
+  updatePaciente(id, body) { return this._request('PUT', '/pacientes/' + id, body); },
   getPacienteDetalhe(id) { return this.get('/pacientes/' + id); },
   setPacienteAtivo(id, ativo) { return this._request('PATCH', '/pacientes/' + id, { ativo }); },
   deletePaciente(id, senha) { return this._request('DELETE', '/pacientes/' + id, { senha }); },
@@ -143,7 +152,17 @@ const api = {
   getAvaliacaoDetalhe(id) { return this.get('/avaliacoes/' + id); },
 
   getDashboardSummary() { return this.get('/dashboard/summary'); },
-  getRelatorioAvaliacoes() { return this.get('/relatorios/avaliacoes'); },
+  getRelatorioAvaliacoes(params) {
+    const qs = new URLSearchParams();
+    if (params) {
+      if (params.data_inicio) qs.set('data_inicio', params.data_inicio);
+      if (params.data_fim) qs.set('data_fim', params.data_fim);
+      if (params.medico_id) qs.set('medico_id', params.medico_id);
+      if (params.sexo) qs.set('sexo', params.sexo);
+    }
+    const q = qs.toString();
+    return this.get('/relatorios/avaliacoes' + (q ? '?' + q : ''));
+  },
 
   getAgendamentos() { return this.get('/agendamentos'); },
   createAgendamento(body) { return this.post('/agendamentos', body); },

@@ -15,6 +15,7 @@ from app.application.use_cases.manage_patients import (
     SetPacienteAtivoUseCase,
 )
 from app.application.use_cases.register_patient import RegisterPatientUseCase
+from app.application.use_cases.update_patient import UpdatePatientUseCase
 from app.db.database import get_db_session
 from app.interfaces.api.dependencies import AuthenticatedDoctor, get_current_doctor
 from app.interfaces.repositories.acompanhante_repository import AcompanhanteRepository
@@ -31,6 +32,7 @@ from app.presentation.api.v1.schemas.patient import (
     PatientListResponse,
     PatientResponse,
     PatientSetAtivoRequest,
+    PatientUpdateRequest,
 )
 
 # Diretório de uploads: <projeto>/frontend/assets/uploads/
@@ -96,6 +98,9 @@ async def list_patients(
     session: AsyncSession = Depends(get_db_session),
     nome: str | None = Query(default=None, description="Busca parcial por nome"),
     cpf: str | None = Query(default=None, description="CPF em dígitos"),
+    medico_id: int | None = Query(
+        default=None, description="Filtrar por médico (apenas admin; ignorado para médico)"
+    ),
     incluir_inativos: bool = Query(
         default=False, description="Incluir pacientes arquivados (ativo=FALSE)"
     ),
@@ -105,6 +110,8 @@ async def list_patients(
     use_case = GetPatientListUseCase(patients=PatientReadRepository(session))
     result = await use_case.execute(
         usuario_id=doctor.usuario_id,
+        is_admin=(doctor.role == "admin"),
+        medico_id=medico_id,
         nome_filter=nome,
         cpf_raw_filter=cpf,
         incluir_inativos=incluir_inativos,
@@ -125,6 +132,7 @@ async def list_patients(
                 ultima_avaliacao=item.ultima_avaliacao,
                 recomenda_exame=item.recomenda_exame,
                 ativo=item.ativo,
+                medico=item.medico,
             )
             for item in result.items
         ],
@@ -148,6 +156,7 @@ async def get_patient_detail(
     detail = await use_case.execute(
         paciente_id=paciente_id,
         usuario_id=doctor.usuario_id,
+        is_admin=(doctor.role == "admin"),
     )
     if detail is None:
         raise HTTPException(
@@ -162,12 +171,10 @@ async def get_patient_detail(
         idade_anos=detail.idade_anos,
         cpf_masked=CPF_MASK if detail.cpf_hash else None,
         etnia=detail.etnia,
-        uf_nascimento=detail.uf_nascimento,
+        telefone=detail.telefone,
         municipio_residencia=detail.municipio_residencia,
         uf_residencia=detail.uf_residencia,
         prematuro=detail.prematuro,
-        idade_gestacional_semanas=detail.idade_gestacional_semanas,
-        peso_nascimento_gramas=detail.peso_nascimento_gramas,
         escolaridade=detail.escolaridade,
         tem_diagnostico_autismo=detail.tem_diagnostico_autismo,
         tem_diagnostico_tdah=detail.tem_diagnostico_tdah,
@@ -187,6 +194,32 @@ async def get_patient_detail(
     )
 
 
+@router.put(
+    "/{paciente_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Editar dados de um paciente",
+)
+async def update_patient(
+    paciente_id: int,
+    payload: PatientUpdateRequest,
+    doctor: AuthenticatedDoctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    use_case = UpdatePatientUseCase(patients=PatientRepository(session))
+    try:
+        await use_case.execute(
+            paciente_id=paciente_id,
+            usuario_id=doctor.usuario_id,
+            is_admin=(doctor.role == "admin"),
+            request=payload,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
 @router.patch(
     "/{paciente_id}",
     status_code=status.HTTP_204_NO_CONTENT,
@@ -203,6 +236,7 @@ async def set_patient_ativo(
         paciente_id=paciente_id,
         usuario_id=doctor.usuario_id,
         ativo=payload.ativo,
+        is_admin=(doctor.role == "admin"),
     )
 
 
@@ -225,6 +259,7 @@ async def delete_patient(
         paciente_id=paciente_id,
         usuario_id=doctor.usuario_id,
         senha=payload.senha,
+        is_admin=(doctor.role == "admin"),
     )
     # Remove a foto do paciente se existir
     foto_path = _UPLOAD_DIR / f"paciente_{paciente_id}.jpg"
@@ -244,7 +279,11 @@ async def upload_foto_paciente(
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
     use_case = GetPatientDetailUseCase(patients=PatientReadRepository(session))
-    detail = await use_case.execute(paciente_id=paciente_id, usuario_id=doctor.usuario_id)
+    detail = await use_case.execute(
+        paciente_id=paciente_id,
+        usuario_id=doctor.usuario_id,
+        is_admin=(doctor.role == "admin"),
+    )
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
 
@@ -275,7 +314,11 @@ async def delete_foto_paciente(
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
     use_case = GetPatientDetailUseCase(patients=PatientReadRepository(session))
-    detail = await use_case.execute(paciente_id=paciente_id, usuario_id=doctor.usuario_id)
+    detail = await use_case.execute(
+        paciente_id=paciente_id,
+        usuario_id=doctor.usuario_id,
+        is_admin=(doctor.role == "admin"),
+    )
     if detail is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Paciente não encontrado.")
 

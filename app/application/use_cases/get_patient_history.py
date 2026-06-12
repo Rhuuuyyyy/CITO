@@ -39,6 +39,7 @@ class GetPatientHistoryUseCase:
         usuario_id: int,
         limit: int = 50,
         offset: int = 0,
+        is_admin: bool = False,
     ) -> PatientHistoryResult:
         """Fetch paginated evaluation history.
 
@@ -59,12 +60,14 @@ class GetPatientHistoryUseCase:
         total = await self._avaliacoes.count_by_paciente(
             paciente_id=paciente_id,
             usuario_id=usuario_id,
+            is_admin=is_admin,
         )
         items = await self._avaliacoes.list_by_paciente(
             paciente_id=paciente_id,
             usuario_id=usuario_id,
             limit=limit,
             offset=offset,
+            is_admin=is_admin,
         )
         return PatientHistoryResult(
             items=items,

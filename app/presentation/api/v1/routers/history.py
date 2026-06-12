@@ -43,6 +43,7 @@ async def get_patient_history(
         usuario_id=doctor.usuario_id,
         limit=limit,
         offset=offset,
+        is_admin=(doctor.role == "admin"),
     )
     return PatientHistoryResponse(
         paciente_id=paciente_id,
@@ -73,7 +74,10 @@ async def get_dashboard_summary(
     use_case = GetDashboardSummaryUseCase(
         dashboard=DashboardRepository(session)
     )
-    result = await use_case.execute(usuario_id=doctor.usuario_id)
+    result = await use_case.execute(
+        usuario_id=doctor.usuario_id,
+        is_admin=(doctor.role == "admin"),
+    )
     return DashboardSummaryResponse(
         total_pacientes=result.total_pacientes,
         avaliacoes_hoje=result.avaliacoes_hoje,
