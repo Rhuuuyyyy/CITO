@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="frontend/assets/CITO.png" alt="CITO" width="900">
+  <img src="https://citosina.com.br/assets/CITO.png" alt="CITO" width="900">
 </p>
 
 <h1 align="center">CITO</h1>
