@@ -20,7 +20,7 @@ Período: 26 de maio de 2026 a 13 de junho de 2026 · Total de commits: 109 · R
 
 Os nomes abaixo constam como autores dos commits no histórico do repositório:
 
-- Rhyan Rocha (rhyanhdr)
+- Rhyan Rocha 
 - Pedro Maraski
 - João Vitor de Souza
 - Augusto Neon / Augusto Ryba
