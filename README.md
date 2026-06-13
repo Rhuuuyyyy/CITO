@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="https://citosina.com.br/assets/CITO.png" alt="CITO" width="900">
+  <img src="frontend/assets/CITO.png" alt="CITO" width="900">
 </p>
-
-<h1 align="center">CITO</h1>
 
 <p align="center">
   Ferramenta de pré-diagnóstico da Síndrome do X Frágil (SXF) para uso clínico.
