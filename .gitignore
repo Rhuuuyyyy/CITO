@@ -20,3 +20,5 @@ __pycache__/
 # Artefatos temporários de geração/validação de documentos (Word/PDF)
 .docbuild/
 .pdfcheck/
+# Arquivos temporários do Office (lock files)
+~$*
