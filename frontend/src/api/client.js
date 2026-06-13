@@ -151,6 +151,7 @@ const api = {
 
   createAvaliacao(body) { return this.post('/avaliacoes', body); },
   getAvaliacaoDetalhe(id) { return this.get('/avaliacoes/' + id); },
+  deleteAvaliacao(id) { return this._request('DELETE', '/avaliacoes/' + id); },
 
   getDashboardSummary() { return this.get('/dashboard/summary'); },
   getRelatorioAvaliacoes(params) {

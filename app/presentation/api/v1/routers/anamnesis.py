@@ -9,6 +9,7 @@ from app.application.dtos.anamnesis import (
     HistoricoFamiliarDTO,
     SubmitAnamnesisDTO,
 )
+from app.application.use_cases.delete_avaliacao import DeleteAvaliacaoUseCase
 from app.application.use_cases.get_evaluation_detail import GetEvaluationDetailUseCase
 from app.application.use_cases.submit_anamnesis import (
     AnamnesisResult,
@@ -175,3 +176,26 @@ async def get_evaluation_detail(
         ],
         historico_familiar=historico,
     )
+
+
+@router.delete(
+    "/{avaliacao_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir uma triagem/avaliação e seus registros dependentes",
+)
+async def delete_evaluation(
+    avaliacao_id: int,
+    doctor: AuthenticatedDoctor = Depends(get_current_doctor),
+    session: AsyncSession = Depends(get_db_session),
+) -> None:
+    use_case = DeleteAvaliacaoUseCase(avaliacoes=AvaliacaoRepository(session))
+    ok = await use_case.execute(
+        avaliacao_id=avaliacao_id,
+        usuario_id=doctor.usuario_id,
+        is_admin=(doctor.role == "admin"),
+    )
+    if not ok:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Avaliação não encontrada.",
+        )

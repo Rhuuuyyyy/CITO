@@ -556,6 +556,7 @@ function ModalProntuario({ paciente, onClose, onChanged, onEditar }) {
   const [delLoading, setDelLoading] = useState(false);
   const [imprimindo, setImprimindo] = useState(null);
   const [editandoAcomp, setEditandoAcomp] = useState(null);
+  const [excluindoTri, setExcluindoTri] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -572,6 +573,22 @@ function ModalProntuario({ paciente, onClose, onChanged, onEditar }) {
 
   function recarregarDetalhe() {
     api.getPacienteDetalhe(paciente.id).then((d) => setDetalhe(d)).catch(() => {});
+  }
+
+  async function excluirTriagem(avaliacaoId) {
+    if (!window.confirm('Excluir esta triagem? A ação é permanente e remove o laudo e as respostas desta avaliação.')) return;
+    setExcluindoTri(avaliacaoId);
+    try {
+      await api.deleteAvaliacao(avaliacaoId);
+      const d = await api.getHistorico(paciente.id).catch(() => ({ items: [] }));
+      setAvaliacoes(d.items || []);
+      recarregarDetalhe();
+    } catch (err) {
+      console.error('Erro ao excluir triagem:', err);
+      alert('Não foi possível excluir: ' + (err.message || 'erro desconhecido'));
+    } finally {
+      setExcluindoTri(null);
+    }
   }
 
   const limiar  = paciente.sexo === 'M' ? 0.56 : 0.55;
@@ -764,7 +781,13 @@ function ModalProntuario({ paciente, onClose, onChanged, onEditar }) {
                         limiar {paciente.sexo === 'M' ? '♂' : '♀'} {limiar}
                       </span>
                     </div>
-                    <div className="mt-4 pt-3 flex justify-end" style={{ borderTop: '1px solid var(--hair-soft)' }}>
+                    <div className="mt-4 pt-3 flex justify-between items-center" style={{ borderTop: '1px solid var(--hair-soft)' }}>
+                      <button onClick={() => excluirTriagem(a.avaliacao_id)}
+                        disabled={excluindoTri === a.avaliacao_id}
+                        className="text-[12px] font-medium lift"
+                        style={{ color: 'var(--rust)', opacity: excluindoTri === a.avaliacao_id ? 0.6 : 1 }}>
+                        {excluindoTri === a.avaliacao_id ? 'Excluindo…' : 'Excluir'}
+                      </button>
                       <button onClick={() => imprimirLaudo(a.avaliacao_id)}
                         disabled={imprimindo === a.avaliacao_id}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium lift"

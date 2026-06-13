@@ -94,3 +94,45 @@ class AvaliacaoRepository:
         if row is None:
             raise RuntimeError("Failed to open log_analise — no id returned")
         return cast(int, row["id"])
+
+    async def delete_cascade(
+        self, *, avaliacao_id: int, usuario_id: int, is_admin: bool = False
+    ) -> bool:
+        """Permanently delete one evaluation and ALL its dependent records.
+
+        Ownership is checked FIRST (a doctor may delete only evaluations of
+        their own patients; an admin may delete any). Only then the children
+        are removed — there is no ON DELETE CASCADE in the schema. Audit rows
+        (tb_auditoria, keyed by string registro_id) are intentionally kept.
+        Returns False when the evaluation does not exist or is out of reach.
+        """
+        owner_clause = "" if is_admin else "AND p.criado_por = :uid"
+        check = await self._session.execute(
+            text(
+                f"""
+                SELECT av.id
+                FROM   tb_avaliacoes av
+                JOIN   tb_pacientes p ON p.id = av.paciente_id
+                WHERE  av.id = :id {owner_clause}
+                """
+            ),
+            {"id": avaliacao_id, "uid": usuario_id},
+        )
+        if check.first() is None:
+            return False
+
+        for child in (
+            "respostas_checklist",
+            "tb_historico_familiar",
+            "tb_encaminhamentos",
+            "tb_log_analises",
+        ):
+            await self._session.execute(
+                text(f"DELETE FROM {child} WHERE avaliacao_id = :id"),
+                {"id": avaliacao_id},
+            )
+        await self._session.execute(
+            text("DELETE FROM tb_avaliacoes WHERE id = :id"),
+            {"id": avaliacao_id},
+        )
+        return True
