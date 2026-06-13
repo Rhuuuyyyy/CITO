@@ -16,3 +16,7 @@ __pycache__/
 
 # Metadata gerado pelo pip install -e
 *.egg-info/
+
+# Artefatos temporários de geração/validação de documentos (Word/PDF)
+.docbuild/
+.pdfcheck/

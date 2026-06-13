@@ -1,4 +1,0 @@
-0|Manual de Arquitetura.docx|C:\Temp\cur_check\d0.pdf
-1|Regras de Negócio.docx|C:\Temp\cur_check\d1.pdf
-2|Guia de Instalação e Setup.docx|C:\Temp\cur_check\d2.pdf
-3|Documento de Implementação Técnica.docx|C:\Temp\cur_check\d3.pdf
