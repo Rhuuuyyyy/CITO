@@ -76,6 +76,57 @@ class AcompanhanteRepository:
             for row in result.mappings().all()
         ]
 
+    async def update(
+        self,
+        *,
+        acompanhante_id: int,
+        nome: str,
+        telefone: str | None,
+        email: str | None,
+        restrict_to_usuario_id: int | None,
+    ) -> bool:
+        """Edit a caregiver's name/phone/email. Returns False when not found or
+        (when restricted) the caregiver is not linked to any of the doctor's
+        patients — cadastro or any of their triagens (modelo B).
+
+        There is no INSTEAD OF UPDATE trigger on the view, so this writes the
+        encrypted name directly to ``tb_acompanhantes`` with pgp_sym_encrypt,
+        the same way the INSERT trigger does.
+        """
+        params: dict[str, object] = {
+            "id": acompanhante_id,
+            "nome": nome,
+            "telefone": telefone,
+            "email": email,
+        }
+        auth = ""
+        if restrict_to_usuario_id is not None:
+            auth = """
+              AND EXISTS (
+                SELECT 1 FROM tb_pacientes p
+                WHERE p.acompanhante_id = tb_acompanhantes.id AND p.criado_por = :uid
+                UNION
+                SELECT 1 FROM tb_avaliacoes av
+                JOIN   tb_pacientes p2 ON p2.id = av.paciente_id
+                WHERE  av.acompanhante_id = tb_acompanhantes.id AND p2.criado_por = :uid
+              )
+            """
+            params["uid"] = restrict_to_usuario_id
+
+        result = await self._session.execute(
+            text(
+                f"""
+                UPDATE tb_acompanhantes
+                SET nome_criptografado = pgp_sym_encrypt(:nome, current_setting('app.pgp_key', true)),
+                    telefone = :telefone,
+                    email = :email
+                WHERE id = :id {auth}
+                """
+            ),
+            params,
+        )
+        return (result.rowcount or 0) > 0
+
     async def get_by_id(self, entity_id: int) -> Acompanhante | None:
         result = await self._session.execute(
             text(

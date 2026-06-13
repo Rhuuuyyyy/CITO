@@ -20,6 +20,15 @@
     })();
   </script>
 
+  <script>
+    // Dev local: frontend servido separado (porta 5500) fala com o backend na 8000.
+    // Em produção (servido junto), mantém o caminho relativo /api/v1.
+    (function () {
+      if (location.port === '5500' || location.port === '5501') {
+        window.CITO_API_BASE = location.protocol + '//' + location.hostname + ':8000/api/v1';
+      }
+    })();
+  </script>
   <script src="src/api/client.js"></script>
 
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>

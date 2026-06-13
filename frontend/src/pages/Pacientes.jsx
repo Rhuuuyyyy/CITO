@@ -473,6 +473,77 @@ const ProntInfo = ({ label, valor }) => (
   </div>
 );
 
+function ModalEditarAcompanhante({ acompanhante, onClose, onSalvo }) {
+  const [form, setForm] = useState({
+    nome: acompanhante.nome || '',
+    telefone: acompanhante.telefone || '',
+    email: acompanhante.email || '',
+  });
+  const [erro, setErro] = useState('');
+  const [salvando, setSalvando] = useState(false);
+
+  async function salvar() {
+    if (form.nome.trim().length < 2) { setErro('Informe o nome completo.'); return; }
+    setSalvando(true);
+    try {
+      await api.updateAcompanhante(acompanhante.id, {
+        nome: form.nome.trim(),
+        telefone: form.telefone.trim() || null,
+        email: form.email.trim() || null,
+      });
+      onSalvo();
+    } catch (err) {
+      console.error('Erro ao editar acompanhante:', err);
+      setErro(err.message || 'Não foi possível salvar.');
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 anim-fade-in"
+      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-sm flex flex-col rounded-3xl card-shadow anim-fade-up"
+        style={{ background: 'var(--surface)', border: '1px solid var(--hair)' }}>
+        <div className="flex items-center justify-between px-7 pt-7 pb-5"
+          style={{ borderBottom: '1px solid var(--hair-soft)' }}>
+          <h2 className="font-display text-[22px] leading-none">Editar acompanhante</h2>
+          <button onClick={onClose}
+            className="w-9 h-9 rounded-full flex items-center justify-center lift"
+            style={{ border: '1px solid var(--hair)', color: 'var(--muted)' }}>{Icon.x}</button>
+        </div>
+        <div className="px-7 py-6 space-y-1">
+          {erro && (
+            <div className="rounded-2xl px-4 py-3 mb-3 text-[12.5px]"
+              style={{ background: 'var(--rust-soft)', color: 'var(--rust)' }}>{erro}</div>
+          )}
+          <Field label="Nome completo" required>
+            <input className={`${inputCls} focus-ink`} style={inputStyle} type="text"
+              value={form.nome} onChange={(e) => { setForm({ ...form, nome: e.target.value }); setErro(''); }} />
+          </Field>
+          <Field label="Telefone">
+            <input className={`${inputCls} focus-ink font-mono`} style={inputStyle} type="tel"
+              placeholder="(00) 9 0000-0000"
+              value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} />
+          </Field>
+          <Field label="E-mail">
+            <input className={`${inputCls} focus-ink`} style={inputStyle} type="email"
+              placeholder="email@exemplo.com"
+              value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          </Field>
+        </div>
+        <div className="flex items-center justify-between px-7 py-5"
+          style={{ borderTop: '1px solid var(--hair-soft)' }}>
+          <BtnGhost onClick={onClose}>Cancelar</BtnGhost>
+          <BtnPrimary onClick={salvar} disabled={salvando}>
+            {salvando ? 'Salvando…' : <>{Icon.check} Salvar</>}
+          </BtnPrimary>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ModalProntuario({ paciente, onClose, onChanged, onEditar }) {
   const [detalhe, setDetalhe]       = useState(null);
   const [avaliacoes, setAvaliacoes] = useState([]);
@@ -484,6 +555,7 @@ function ModalProntuario({ paciente, onClose, onChanged, onEditar }) {
   const [erroDel, setErroDel]       = useState('');
   const [delLoading, setDelLoading] = useState(false);
   const [imprimindo, setImprimindo] = useState(null);
+  const [editandoAcomp, setEditandoAcomp] = useState(null);
 
   useEffect(() => {
     Promise.all([
@@ -497,6 +569,10 @@ function ModalProntuario({ paciente, onClose, onChanged, onEditar }) {
       setLoading(false);
     });
   }, [paciente.id]);
+
+  function recarregarDetalhe() {
+    api.getPacienteDetalhe(paciente.id).then((d) => setDetalhe(d)).catch(() => {});
+  }
 
   const limiar  = paciente.sexo === 'M' ? 0.56 : 0.55;
   const fmtData = (s) => (s ? s.split('-').reverse().join('/') : '—');
@@ -639,11 +715,19 @@ function ModalProntuario({ paciente, onClose, onChanged, onEditar }) {
                   {(detalhe.acompanhantes || []).map((a) => (
                     <div key={a.id} className="rounded-2xl p-4"
                       style={{ border: '1px solid var(--hair)', background: 'var(--paper-2)' }}>
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px]">
-                        <ProntInfo label="Nome"    valor={a.nome} />
-                        <ProntInfo label="Relação" valor={a.relacao || '—'} />
-                        {a.telefone && <ProntInfo label="Telefone" valor={a.telefone} />}
-                        {a.email    && <ProntInfo label="E-mail"   valor={a.email} />}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-[13px] flex-1 min-w-0">
+                          <ProntInfo label="Nome"    valor={a.nome} />
+                          <ProntInfo label="Relação" valor={a.relacao || '—'} />
+                          {a.telefone && <ProntInfo label="Telefone" valor={a.telefone} />}
+                          {a.email    && <ProntInfo label="E-mail"   valor={a.email} />}
+                        </div>
+                        <button onClick={() => setEditandoAcomp(a)}
+                          className="text-[12px] font-medium lift flex-shrink-0" style={{ color: 'var(--ink)' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--muted)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--ink)'; }}>
+                          {Icon.edit} Editar
+                        </button>
                       </div>
                     </div>
                   ))}
@@ -717,6 +801,14 @@ function ModalProntuario({ paciente, onClose, onChanged, onEditar }) {
           </div>
         </div>
       </div>
+
+      {editandoAcomp && (
+        <ModalEditarAcompanhante
+          acompanhante={editandoAcomp}
+          onClose={() => setEditandoAcomp(null)}
+          onSalvo={() => { setEditandoAcomp(null); recarregarDetalhe(); }}
+        />
+      )}
 
       {/* Modal de confirmação de exclusão */}
       {excluindo && (

@@ -125,6 +125,7 @@ const api = {
   getSintomas() { return this.get('/sintomas'); },
   getAcompanhantes() { return this.get('/acompanhantes'); },
   createAcompanhante(body) { return this.post('/acompanhantes', body); },
+  updateAcompanhante(id, body) { return this._request('PUT', '/acompanhantes/' + id, body); },
 
   getPacientes(params) {
     const qs = new URLSearchParams();
