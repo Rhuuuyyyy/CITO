@@ -171,6 +171,8 @@ const api = {
   updateAgendamento(id, body) { return this._request('PATCH', '/agendamentos/' + id, body); },
   deleteAgendamento(id) { return this._request('DELETE', '/agendamentos/' + id); },
 
+  getFeriados(ano) { return this.get('/feriados/' + ano); },
+
   // ── Usuários (admin) ─────────────────────────────────────────────────────
   getUsuarios() { return this.get('/usuarios'); },
   createUsuario(body) { return this.post('/usuarios', body); },

@@ -19,6 +19,20 @@
       } catch (e) {}
     })();
   </script>
+  <script>
+    // Quando o frontend é servido por outro servidor (ex.: Live Server na :5500),
+    // o backend uvicorn responde na :8000. Aponta a API para lá nesse caso;
+    // se a própria API servir esta página, mantém o caminho relativo.
+    (function () {
+      try {
+        var loc = window.location;
+        var ehLocal = loc.hostname === 'localhost' || loc.hostname === '127.0.0.1';
+        if (ehLocal && loc.port && loc.port !== '8000') {
+          window.CITO_API_BASE = 'http://' + loc.hostname + ':8000/api/v1';
+        }
+      } catch (e) {}
+    })();
+  </script>
   <script src="src/api/client.js"></script>
 
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>

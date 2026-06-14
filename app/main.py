@@ -34,6 +34,7 @@ from app.presentation.api.v1.routers import (
     agendamentos,
     anamnesis,
     auth,
+    feriados,
     history,
     patients,
     relatorios,
@@ -164,6 +165,7 @@ def create_app() -> FastAPI:
     app.include_router(relatorios.router, prefix=settings.api_prefix)
     app.include_router(acompanhantes.router, prefix=settings.api_prefix)
     app.include_router(users.router, prefix=settings.api_prefix)
+    app.include_router(feriados.router, prefix=settings.api_prefix)
 
     # ── Health probe (outside api_prefix for infra / k8s) ────────────────────
     # ── Health probe (Detetive) ────────────────────

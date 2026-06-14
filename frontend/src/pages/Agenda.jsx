@@ -129,9 +129,27 @@ function ModalAgendamento({ onClose, onSalvar, inicial }) {
 }
 
 function AgendaPage({ usuario }) {
+  const hoje = new Date();
+  const todayISO = isoDate(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
   const [agendamentos, setAgendamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [modalAg, setModalAg] = useState(null); // null | { item: null|obj }
+  const [selectedISO, setSelectedISO] = useState(todayISO);
+  const [viewYear, setViewYear] = useState(hoje.getFullYear());
+  const [feriados, setFeriados] = useState({});
+
+  useEffect(() => {
+    let cancelado = false;
+    api.getFeriados(viewYear)
+      .then((lista) => {
+        if (cancelado) return;
+        const mapa = {};
+        (lista || []).forEach((f) => { mapa[f.data] = f.nome; });
+        setFeriados(mapa);
+      })
+      .catch(() => { /* feriados são opcionais; segue sem destaque */ });
+    return () => { cancelado = true; };
+  }, [viewYear]);
 
   async function carregar() {
     setLoading(true);
@@ -185,18 +203,31 @@ function AgendaPage({ usuario }) {
     carregar();
   }
 
-  const hoje = new Date();
   const marks = {};
   agendamentos.forEach((a) => {
-    const d = new Date(a.data_hora);
-    if (d.getMonth() === hoje.getMonth() && d.getFullYear() === hoje.getFullYear()) marks[d.getDate()] = true;
+    const iso = (a.data_hora || '').slice(0, 10);
+    if (iso) marks[iso] = true;
   });
+
+  const doDia = agendamentos
+    .filter((a) => (a.data_hora || '').slice(0, 10) === selectedISO)
+    .sort((a, b) => (a.data_hora || '').localeCompare(b.data_hora || ''));
+
+  const selData = new Date(selectedISO + 'T00:00:00');
+  const selLabel = selData.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+  const feriadoDoDia = feriados[selectedISO];
 
   return (
     <div className="anim-fade-in grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-5">
       <div className="space-y-5">
         <Card className="p-6">
-          <CalendarWidget marks={marks} />
+          <CalendarWidget
+            marks={marks}
+            holidays={feriados}
+            selectedISO={selectedISO}
+            onSelectDate={setSelectedISO}
+            onViewChange={(y) => setViewYear(y)}
+          />
           <div className="mt-5 pt-4" style={{ borderTop: '1px solid var(--hair-soft)' }}>
             <BtnPrimary className="w-full justify-center" onClick={() => setModalAg({ item: null })}>
               {Icon.plus} Novo agendamento
@@ -219,17 +250,20 @@ function AgendaPage({ usuario }) {
         <div className="px-6 py-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
           <div>
             <div className="text-[10.5px] font-medium uppercase tracking-[0.16em]" style={{ color: 'var(--muted)' }}>Agendamentos</div>
-            <h3 className="font-display text-[26px] leading-none mt-1">Próximas consultas</h3>
+            <h3 className="font-display text-[26px] leading-none mt-1 capitalize">{selLabel}</h3>
+            {feriadoDoDia && (
+              <div className="text-[12px] mt-1 font-medium" style={{ color: 'var(--rust)' }}>Feriado · {feriadoDoDia}</div>
+            )}
           </div>
         </div>
         <div className="p-6">
           {loading && <p className="text-[13px]" style={{ color: 'var(--muted)' }}>Carregando agenda…</p>}
-          {!loading && agendamentos.length === 0 && (
-            <p className="text-[13px]" style={{ color: 'var(--muted)' }}>Nenhum agendamento. Clique em “Novo agendamento” para criar.</p>
+          {!loading && doDia.length === 0 && (
+            <p className="text-[13px]" style={{ color: 'var(--muted)' }}>Nenhum agendamento para este dia. Selecione outra data no calendário ou clique em “Novo agendamento”.</p>
           )}
-          {!loading && agendamentos.length > 0 && (
+          {!loading && doDia.length > 0 && (
             <div className="relative pl-6" style={{ borderLeft: '1px dashed var(--hair)' }}>
-              {agendamentos.map((a) => {
+              {doDia.map((a) => {
                 const d = new Date(a.data_hora);
                 const [, label, tone] = statusInfo(a.status);
                 return (
