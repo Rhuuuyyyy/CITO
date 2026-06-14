@@ -1,8 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════
-// FOTO — componentes de avatar e captura de foto de paciente
+// FOTO
 // ═══════════════════════════════════════════════════════════════════════
-
-// ── Modal de seleção/captura de foto ────────────────────────────────────
 function ModalFotoCaptura({ pacienteId, nomeAtual, onSalvar, onClose }) {
   const [preview, setPreview] = useState(null);
   const [salvando, setSalvando] = useState(false);
@@ -20,8 +18,6 @@ function ModalFotoCaptura({ pacienteId, nomeAtual, onSalvar, onClose }) {
     if (!preview) return;
     setSalvando(true);
     try {
-      // Se pacienteId fornecido, faz upload imediato (edição de existente).
-      // Se null (novo cadastro), o upload ocorre após a criação do paciente.
       if (pacienteId) {
         await FotoStore.salvar(pacienteId, preview);
       }
@@ -57,7 +53,6 @@ function ModalFotoCaptura({ pacienteId, nomeAtual, onSalvar, onClose }) {
         </div>
 
         <div className="px-6 py-5 space-y-4">
-          {/* Preview */}
           <div className="w-36 h-36 rounded-2xl mx-auto overflow-hidden flex items-center justify-center"
             style={{ border: '2px dashed var(--hair)', background: 'var(--paper-2)' }}>
             {preview
@@ -90,10 +85,9 @@ function ModalFotoCaptura({ pacienteId, nomeAtual, onSalvar, onClose }) {
   );
 }
 
-// ── Avatar do paciente com suporte a edição ──────────────────────────────
 function FotoAvatar({ pacienteId, nome, size = 48, editavel = false, onAtualizar }) {
   const [erro, setErro] = useState(false);
-  const [ts, setTs]     = useState(Date.now()); // cache-buster pós-upload
+  const [ts, setTs]     = useState(Date.now());
   const [modalFoto, setModalFoto] = useState(false);
 
   const url = FotoStore.carregar(pacienteId) + '?t=' + ts;
@@ -104,7 +98,7 @@ function FotoAvatar({ pacienteId, nome, size = 48, editavel = false, onAtualizar
 
   function aoSalvar(base64) {
     setErro(false);
-    setTs(Date.now()); // força reload da img
+    setTs(Date.now());
     setModalFoto(false);
     if (onAtualizar) onAtualizar(base64);
   }

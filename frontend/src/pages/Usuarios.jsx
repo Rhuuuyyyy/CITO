@@ -1,6 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════
-// USUÁRIOS (admin) — cadastro e gestão de médicos
-// Visível só para admin (App/Sidebar gating); o backend também exige admin.
+// USUÁRIOS (admin)
 // ═══════════════════════════════════════════════════════════════════════
 function UsuariosPage({ usuario }) {
   const [usuarios, setUsuarios] = useState([]);
@@ -10,8 +9,7 @@ function UsuariosPage({ usuario }) {
   const [form, setForm] = useState({
     nome: '', email: '', crm: '', especialidade: '', senha: '',
   });
-  // Exclusão: usuário-alvo + senha de confirmação do admin
-  const [excluir, setExcluir]       = useState(null); // objeto do usuário ou null
+  const [excluir, setExcluir]       = useState(null);
   const [senhaConf, setSenhaConf]   = useState('');
   const [erroExcluir, setErroExcluir] = useState('');
   const [deletando, setDeletando]   = useState(false);
@@ -101,7 +99,6 @@ function UsuariosPage({ usuario }) {
   return (
     <div className="anim-fade-in space-y-5">
 
-      {/* Formulário de cadastro */}
       <Card className="p-6">
         <h3 className="font-display text-[20px] mb-1">Novo médico</h3>
         <p className="text-[12.5px] mb-5" style={{ color: 'var(--muted)' }}>
@@ -147,7 +144,6 @@ function UsuariosPage({ usuario }) {
         </div>
       </Card>
 
-      {/* Lista de usuários */}
       <Card className="overflow-x-auto">
         {loading && (
           <div className="px-6 py-8 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
@@ -213,7 +209,6 @@ function UsuariosPage({ usuario }) {
         )}
       </Card>
 
-      {/* Modal de confirmação de exclusão (pede a senha do admin) */}
       {excluir && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 anim-fade-in"
           style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}

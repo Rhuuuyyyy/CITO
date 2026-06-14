@@ -1,4 +1,3 @@
-"""Request/response schemas for admin user management."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -7,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserCreateRequest(BaseModel):
-    """Payload para o admin criar um novo médico."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -19,7 +17,6 @@ class UserCreateRequest(BaseModel):
 
 
 class UserSetAtivoRequest(BaseModel):
-    """Ativar/desativar uma conta (soft delete)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -27,7 +24,6 @@ class UserSetAtivoRequest(BaseModel):
 
 
 class UserDeleteRequest(BaseModel):
-    """Exclusão definitiva, confirmada com a senha do próprio admin."""
 
     model_config = ConfigDict(extra="forbid")
 

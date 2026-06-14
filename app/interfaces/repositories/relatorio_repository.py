@@ -1,10 +1,3 @@
-"""Read-only adapter for clinical reports (Config → Relatórios).
-
-Returns the authenticated doctor's finalised evaluations so the frontend can
-build weekly/monthly activity charts. Does not depend on the avaliacoes view
-exposing ``recomenda_exame`` — the referral flag is derived from score + sex
-client-side, preserving the legacy report behaviour.
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -16,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def _parse_date(value: str | None) -> date | None:
-    """Parse a YYYY-MM-DD string; return None for empty/invalid input."""
     if not value:
         return None
     try:
@@ -47,19 +39,11 @@ class RelatorioRepository:
         data_fim: str | None = None,
         sexo: str | None = None,
     ) -> list[RelatorioAvaliacaoItem]:
-        """Finalised evaluations for the reports view.
-
-        ``restrict_to_usuario_id`` scopes the result to one doctor's patients
-        (``criado_por``). When ``None`` (admin viewing everything) no doctor
-        filter is applied. The remaining arguments are optional report filters.
-        """
         conditions = ["a.status = 'finalizada'"]
         params: dict[str, object] = {}
         if restrict_to_usuario_id is not None:
             conditions.append("p.criado_por = :usuario_id")
             params["usuario_id"] = restrict_to_usuario_id
-        # Datas: convertidas para objetos date (asyncpg não aceita string em
-        # comparação tipada). data_fim é exclusiva no dia seguinte (inclui o dia).
         di = _parse_date(data_inicio)
         df = _parse_date(data_fim)
         if di is not None:

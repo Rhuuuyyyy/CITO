@@ -1,33 +1,28 @@
-"""Domain-neutral exception hierarchy for the SXFp backend.
-
-The presentation layer maps these to HTTP responses (RFC 7807 Problem Details).
-The domain layer NEVER raises fastapi.HTTPException — it raises these instead.
-"""
 
 
 class SXFpError(Exception):
     code: str = "cito.error"
 
 
-class DomainError(SXFpError): # Regra de negocio violada (ex. score invalido)
+class DomainError(SXFpError):
     code = "domain.error"
 
 
-class NotFoundError(SXFpError): # Recurso nao existe
+class NotFoundError(SXFpError):
     code = "resource.not_found"
 
 
-class ConflictError(SXFpError): # Recurso ja existe
+class ConflictError(SXFpError):
     code = "resource.conflict"
 
 
-class AuthenticationError(SXFpError): # USuario nao esta logado
+class AuthenticationError(SXFpError):
     code = "auth.unauthenticated"
 
 
-class AuthorizationError(SXFpError): # Usuario logado mas nao tem permissao
+class AuthorizationError(SXFpError):
     code = "auth.forbidden"
 
 
-class LGPDComplianceError(SXFpError): # Violacao de privacidade
+class LGPDComplianceError(SXFpError):
     code = "lgpd.violation"

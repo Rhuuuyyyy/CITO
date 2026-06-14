@@ -133,7 +133,7 @@ function AgendaPage({ usuario }) {
   const todayISO = isoDate(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
   const [agendamentos, setAgendamentos] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [modalAg, setModalAg] = useState(null); // null | { item: null|obj }
+  const [modalAg, setModalAg] = useState(null);
   const [selectedISO, setSelectedISO] = useState(todayISO);
   const [viewYear, setViewYear] = useState(hoje.getFullYear());
   const [feriados, setFeriados] = useState({});
@@ -147,7 +147,7 @@ function AgendaPage({ usuario }) {
         (lista || []).forEach((f) => { mapa[f.data] = f.nome; });
         setFeriados(mapa);
       })
-      .catch(() => { /* feriados são opcionais; segue sem destaque */ });
+      .catch(() => {});
     return () => { cancelado = true; };
   }, [viewYear]);
 

@@ -1,4 +1,3 @@
-"""AuthService — manages doctor sessions and authentication audit trail."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,22 +9,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 @dataclass(frozen=True)
 class AuthenticatedUser:
-    """Identity returned after a successful credential check."""
 
     usuario_id: int
-    tipo: str  # 'admin' | 'medico'
+    tipo: str
     nome: str
     crm: str | None
     especialidade: str | None
 
 
 class AuthService:
-    """Coordinates authentication and session lifecycle against the DB.
-
-    The 'usuarios' table uses bcrypt via DB trigger (trg_hash_senha_usuario).
-    Password verification uses PostgreSQL's native crypt() function —
-    the Python layer never handles bcrypt directly.
-    """
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -37,7 +29,6 @@ class AuthService:
         ip_origem: str,
         user_agent: str,
     ) -> int:
-        """Register a new authenticated session. Returns sessao_id (BIGSERIAL)."""
         result = await self._session.execute(
             text(
                 """
@@ -63,7 +54,6 @@ class AuthService:
         sessao_id: int,
         tipo_encerramento: str,
     ) -> None:
-        """Mark a session as closed in tb_log_sessoes."""
         await self._session.execute(
             text(
                 """
@@ -86,7 +76,6 @@ class AuthService:
         sessao_id: int | None = None,
         motivo_falha: str | None = None,
     ) -> None:
-        """Append-only record of every login attempt (success or failure)."""
         await self._session.execute(
             text(
                 """
@@ -116,7 +105,6 @@ class AuthService:
         janela_minutos: int = 10,
         max_falhas: int = 5,
     ) -> bool:
-        """Returns True if the IP has exceeded the failure threshold."""
         result = await self._session.execute(
             text(
                 """
@@ -139,12 +127,6 @@ class AuthService:
         email: str,
         senha_plain: str,
     ) -> AuthenticatedUser | None:
-        """Verify credentials against the DB using PostgreSQL native crypt().
-
-        Returns the authenticated user's identity if valid, or None if invalid.
-        ``tipo`` is the RBAC role from the DB ('admin' or 'medico'). NEVER log
-        senha_plain.
-        """
         result = await self._session.execute(
             text(
                 """

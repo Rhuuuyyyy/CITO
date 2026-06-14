@@ -1,4 +1,3 @@
-"""HTTP router for the registered caregivers list."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status

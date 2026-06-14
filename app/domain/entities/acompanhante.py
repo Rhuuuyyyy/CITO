@@ -1,4 +1,3 @@
-"""Acompanhante domain entity — legal guardian or caregiver of a patient."""
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.domain.value_objects.cpf import CPFAnnotated
@@ -12,7 +11,6 @@ class Acompanhante(BaseModel):
         validate_assignment=True,
     )
 
-    # Integer SERIAL id from the DB. None until persisted (set by the repository).
     id: int | None = None
     nome: str = Field(min_length=2, max_length=120)
     cpf: CPFAnnotated | None = None

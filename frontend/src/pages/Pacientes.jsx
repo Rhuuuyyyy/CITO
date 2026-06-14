@@ -20,7 +20,6 @@ const ESCOLARIDADES = [
 ];
 const selectArrow = "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6862' stroke-width='2'><polyline points='6 9 12 15 18 9'/></svg>\")";
 
-// ── Modal de cadastro ────────────────────────────────────────────────
 function ModalCadastroPaciente({ onClose, onSalvar, onSalvarEdicao, pacienteEdit }) {
   const isEdit = !!pacienteEdit;
   const [aba, setAba]         = useState('paciente');
@@ -30,7 +29,7 @@ function ModalCadastroPaciente({ onClose, onSalvar, onSalvarEdicao, pacienteEdit
     nome: pacienteEdit.nome || '',
     dataNasc: pacienteEdit.data_nascimento || '',
     sexo: pacienteEdit.sexo || '',
-    cpf: '',                       // não pré-preenchível (vem mascarado)
+    cpf: '',
     celular: pacienteEdit.telefone || '', email: '',
     etnia: pacienteEdit.etnia || '',
     escolaridade: pacienteEdit.escolaridade || '',
@@ -55,7 +54,6 @@ function ModalCadastroPaciente({ onClose, onSalvar, onSalvarEdicao, pacienteEdit
     if (!paciente.nome.trim()) e.nome     = 'Obrigatório.';
     if (!paciente.dataNasc)    e.dataNasc = 'Obrigatório.';
     if (!paciente.sexo)        e.sexo     = 'Obrigatório.';
-    // Na edição o CPF é opcional (em branco = mantém o atual).
     if (!isEdit && !paciente.cpf.trim()) e.cpf = 'Obrigatório.';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -77,12 +75,11 @@ function ModalCadastroPaciente({ onClose, onSalvar, onSalvarEdicao, pacienteEdit
       medicamentos_uso: p.medicamentos_uso?.trim() || null,
       diagnostico_confirmado_fxs: p.diagnostico_confirmado_fxs,
       telefone: p.celular?.trim() || null,
-      // Preserva campos fora do formulário para não apagá-los.
       municipio_residencia: pacienteEdit.municipio_residencia || null,
       uf_residencia: pacienteEdit.uf_residencia || null,
     };
     const cpfDigits = (p.cpf || '').replace(/\D/g, '');
-    if (cpfDigits.length === 11) body.cpf = cpfDigits;  // só envia se digitou novo
+    if (cpfDigits.length === 11) body.cpf = cpfDigits;
     setSalvandoEdit(true);
     try {
       await onSalvarEdicao(body);
@@ -151,7 +148,6 @@ function ModalCadastroPaciente({ onClose, onSalvar, onSalvarEdicao, pacienteEdit
       <div className="w-full max-w-xl max-h-[92vh] flex flex-col rounded-3xl card-shadow anim-fade-up"
         style={{ background: 'var(--surface)', border: '1px solid var(--hair)' }}>
 
-        {/* Header */}
         <div className="flex items-center justify-between px-7 pt-7 pb-5"
           style={{ borderBottom: '1px solid var(--hair-soft)' }}>
           <div>
@@ -169,7 +165,6 @@ function ModalCadastroPaciente({ onClose, onSalvar, onSalvarEdicao, pacienteEdit
           </button>
         </div>
 
-        {/* Abas (ocultas na edição — acompanhantes são geridos por triagem) */}
         {!isEdit && (
         <div className="flex px-7 pt-4 gap-1" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
           {[
@@ -193,14 +188,11 @@ function ModalCadastroPaciente({ onClose, onSalvar, onSalvarEdicao, pacienteEdit
         </div>
         )}
 
-        {/* Conteúdo */}
         <div className="flex-1 overflow-y-auto px-7 py-6">
 
-          {/* ── ABA PACIENTE ── */}
           {aba === 'paciente' && (
             <div className="space-y-1">
 
-              {/* Foto (na edição, a foto é alterada pelo avatar do prontuário) */}
               {!isEdit && (
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 flex items-center justify-center"
@@ -227,7 +219,6 @@ function ModalCadastroPaciente({ onClose, onSalvar, onSalvarEdicao, pacienteEdit
               </div>
               )}
 
-              {/* Modal de captura */}
               {modalFoto && (
                 <ModalFotoCaptura
                   pacienteId={null}
@@ -350,7 +341,6 @@ function ModalCadastroPaciente({ onClose, onSalvar, onSalvarEdicao, pacienteEdit
             </div>
           )}
 
-          {/* ── ABA ACOMPANHANTES ── */}
           {aba === 'acompanhantes' && (
             <div className="space-y-5">
               <p className="text-[12.5px]" style={{ color: 'var(--muted)' }}>
@@ -430,7 +420,6 @@ function ModalCadastroPaciente({ onClose, onSalvar, onSalvarEdicao, pacienteEdit
           )}
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between px-7 py-5"
           style={{ borderTop: '1px solid var(--hair-soft)' }}>
           <BtnGhost onClick={onClose}>Cancelar</BtnGhost>
@@ -465,7 +454,6 @@ function ModalCadastroPaciente({ onClose, onSalvar, onSalvarEdicao, pacienteEdit
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────
 const ProntInfo = ({ label, valor }) => (
   <div>
     <span className="text-[10.5px] uppercase tracking-wider block mb-0.5" style={{ color: 'var(--subtle)' }}>{label}</span>
@@ -666,7 +654,6 @@ function ModalProntuario({ paciente, onClose, onChanged, onEditar }) {
       <div className="w-full max-w-xl max-h-[92vh] flex flex-col rounded-3xl card-shadow anim-fade-up"
         style={{ background: 'var(--surface)', border: '1px solid var(--hair)' }}>
 
-        {/* Header com avatar */}
         <div className="flex items-center justify-between px-7 pt-7 pb-5"
           style={{ borderBottom: '1px solid var(--hair-soft)' }}>
           <div className="flex items-center gap-4">
@@ -833,7 +820,6 @@ function ModalProntuario({ paciente, onClose, onChanged, onEditar }) {
         />
       )}
 
-      {/* Modal de confirmação de exclusão */}
       {excluindo && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 anim-fade-in"
           style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)' }}
@@ -883,12 +869,11 @@ function PacientesPage({ usuario, abrirPacienteId }) {
   const [pacientes, setPacientes] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [prontuario, setProntuario] = useState(null);
-  const [editando, setEditando] = useState(null);  // detalhe do paciente em edição
+  const [editando, setEditando] = useState(null);
   const [mostrarArquivados, setMostrarArquivados] = useState(false);
-  const [medicoF, setMedicoF]   = useState('');   // '' = todos (admin)
-  const [medicos, setMedicos]   = useState([]);   // lista p/ o filtro (admin)
+  const [medicoF, setMedicoF]   = useState('');
+  const [medicos, setMedicos]   = useState([]);
 
-  // Admin: carrega a lista de médicos para o seletor de filtro.
   useEffect(() => {
     if (!isAdmin) return;
     api.getUsuarios()
@@ -938,7 +923,6 @@ function PacientesPage({ usuario, abrirPacienteId }) {
     }
   }
 
-  // Server-side search: names are masked in the API, so filtering must run on the backend.
   useEffect(() => {
     const handle = setTimeout(() => {
       const digits = q.replace(/\D/g, '');
@@ -975,7 +959,6 @@ function PacientesPage({ usuario, abrirPacienteId }) {
     try {
       const criado = await api.createPaciente(body);
 
-      // Faz upload da foto após criar o paciente (quando o ID já existe)
       if (fotoBase64 && criado?.id) {
         await FotoStore.salvar(criado.id, fotoBase64);
       }
@@ -988,8 +971,6 @@ function PacientesPage({ usuario, abrirPacienteId }) {
     carregarPacientes();
   }
 
-  // Exporta a lista atual (já carregada/filtrada) como CSV. Client-side, sem backend.
-  // Separador ';' + BOM para abrir bem no Excel em pt-BR. Dados já mascarados (LGPD).
   function exportarCSV() {
     if (!pacientes.length) return;
     const headers = ['Nome', 'Nascimento', 'CPF', 'Celular', 'Acompanhante',
@@ -1020,7 +1001,6 @@ function PacientesPage({ usuario, abrirPacienteId }) {
   return (
     <div className="anim-fade-in space-y-5">
 
-      {/* Barra de ferramentas */}
       <Card className="p-5">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[260px]">
@@ -1049,7 +1029,6 @@ function PacientesPage({ usuario, abrirPacienteId }) {
         </div>
       </Card>
 
-      {/* Tabela */}
       <Card className="overflow-x-auto">
         {loading && (
           <div className="px-6 py-8 text-center text-[13px]" style={{ color: 'var(--muted)' }}>
@@ -1131,7 +1110,6 @@ function PacientesPage({ usuario, abrirPacienteId }) {
         )}
       </Card>
 
-      {/* Modal de novo cadastro */}
       {modal && (
         <ModalCadastroPaciente
           onClose={() => setModal(false)}
@@ -1139,7 +1117,6 @@ function PacientesPage({ usuario, abrirPacienteId }) {
         />
       )}
 
-      {/* Prontuário / botão Abrir */}
       {prontuario && (
         <ModalProntuario
           paciente={prontuario}
@@ -1149,7 +1126,6 @@ function PacientesPage({ usuario, abrirPacienteId }) {
         />
       )}
 
-      {/* Edição de paciente */}
       {editando && (
         <ModalCadastroPaciente
           pacienteEdit={editando}

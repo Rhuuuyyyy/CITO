@@ -2,7 +2,6 @@
 // APP SHELL
 // ═══════════════════════════════════════════════════════════════════════
 function App() {
-  // Restore an existing session (JWT in sessionStorage) on reload.
   const [usuario, setUsuario]         = useState(() => (api.getToken() ? api.getUser() : null));
   const [page, setPage]               = useState('dashboard');
   const [navPayload, setNavPayload]   = useState(null);
@@ -17,7 +16,6 @@ function App() {
     try { localStorage.setItem('cito-theme', theme); } catch (e) {}
   }, [theme]);
 
-  // Session expiry (401 from any API call): bounce back to the login screen.
   useEffect(() => {
     api.onUnauthorized = () => {
       setUsuario(null);

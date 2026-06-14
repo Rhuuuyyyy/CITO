@@ -1,4 +1,4 @@
-// THEME TOGGLE — segmented switch
+// THEME TOGGLE
 function ThemeToggle({ theme, onToggle }) {
   const isDark = theme === 'dark';
   return (

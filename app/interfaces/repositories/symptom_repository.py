@@ -1,4 +1,3 @@
-"""Read-only adapter for the active symptom catalog (sintomas table)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -14,7 +13,6 @@ class SintomaItem:
 
 
 class SymptomReadRepository:
-    """Reads the active symptom catalog used to build the screening payload."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session

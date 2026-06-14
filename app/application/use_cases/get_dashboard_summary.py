@@ -1,11 +1,3 @@
-"""GetDashboardSummaryUseCase — operational metrics for the doctor's personal dashboard.
-
-Unlike GetDashboardStatsUseCase (which returns anonymised epidemiological
-aggregate data with k-anonymity enforcement), this use case returns the
-doctor's own operational counts: patients, evaluations, and recommendation
-rate. These figures are personal to the authenticated doctor and never
-aggregate data from other doctors' patients.
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,11 +17,6 @@ class DashboardSummaryResult:
 
 
 class GetDashboardSummaryUseCase:
-    """Returns operational dashboard metrics for one authenticated doctor.
-
-    No LGPD k-anonymity guard is required here: the data belongs exclusively
-    to the requesting doctor (no cross-doctor aggregation occurs).
-    """
 
     def __init__(self, dashboard: DashboardRepository) -> None:
         self._dashboard = dashboard

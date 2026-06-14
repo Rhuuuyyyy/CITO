@@ -1,4 +1,3 @@
-"""Read-only adapter for patient listing queries."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -9,10 +8,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 @dataclass(frozen=True)
 class PatientListItem:
-    """Patient record for list views, enriched with caregiver + last evaluation.
-
-    ``nome`` is the decrypted name (masking is applied in the presentation layer).
-    """
 
     id: int
     nome: str
@@ -30,7 +25,6 @@ class PatientListItem:
 
 @dataclass(frozen=True)
 class AcompanhanteDetail:
-    """Caregiver linked to a patient, with decrypted name."""
 
     id: int
     nome: str
@@ -41,7 +35,6 @@ class AcompanhanteDetail:
 
 @dataclass(frozen=True)
 class PatientDetail:
-    """Full patient record for the detail/laudo view (name in clear, no raw CPF)."""
 
     id: int
     nome: str
@@ -64,8 +57,6 @@ class PatientDetail:
 
 
 class PatientReadRepository:
-    """Reads patient lists from the 'pacientes' view, joined with caregiver and
-    the patient's most recent finalised evaluation."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -80,7 +71,6 @@ class PatientReadRepository:
         limit: int = 50,
         offset: int = 0,
     ) -> list[PatientListItem]:
-        # restrict_to_usuario_id None → admin vê todos os pacientes.
         conditions: list[str] = []
         params: dict[str, object] = {
             "limit": limit,
@@ -169,11 +159,6 @@ class PatientReadRepository:
         paciente_id: int,
         restrict_to_usuario_id: int | None,
     ) -> PatientDetail | None:
-        """Full record of one patient, with caregiver(s).
-
-        ``restrict_to_usuario_id`` scopes the lookup to the owning doctor; when
-        ``None`` (admin) any patient can be opened.
-        """
         params: dict[str, object] = {"paciente_id": paciente_id}
         owner_clause = ""
         if restrict_to_usuario_id is not None:
@@ -201,9 +186,6 @@ class PatientReadRepository:
         if r is None:
             return None
 
-        # TODOS os acompanhantes distintos do paciente: o do cadastro +
-        # os registrados em cada triagem (modelo B). A relação (grau_parentesco)
-        # do cadastro tem prioridade sobre a das avaliações para o mesmo id.
         acomp_rows = await self._session.execute(
             text(
                 """
@@ -238,7 +220,7 @@ class PatientReadRepository:
         ]
 
         def _num(v: object) -> int | None:
-            return int(v) if v is not None else None  # type: ignore[arg-type]
+            return int(v) if v is not None else None
 
         def _bool(v: object) -> bool | None:
             return bool(v) if v is not None else None

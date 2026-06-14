@@ -1,1 +1,0 @@
-"""Use cases (one class/function per user intent: SubmitAnamnesis, GetPatientHistory, ...)."""

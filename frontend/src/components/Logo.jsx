@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════
-// LOGO — actual cito wordmark image
+// LOGO
 // ═══════════════════════════════════════════════════════════════════════
 function CitoLogo({ size = 40 }) {
   return (
@@ -8,7 +8,6 @@ function CitoLogo({ size = 40 }) {
   );
 }
 
-// Row of four sitting cats — uses the actual logo cat slices
 function CatRow({ className = "", height = 24, gap = 8 }) {
   return (
     <div className={`inline-flex items-end cito-cat-row ${className}`} style={{ gap: `${gap}px` }}>
@@ -20,7 +19,6 @@ function CatRow({ className = "", height = 24, gap = 8 }) {
   );
 }
 
-// Single cat — lets you pick which slice and how big
 function CatSilhouette({ index = 3, height = 24, className = "", style = {} }) {
   return (
     <img src={`assets/cat-${index}.png`} alt="" style={{ height, width: 'auto', ...style }}
@@ -28,7 +26,6 @@ function CatSilhouette({ index = 3, height = 24, className = "", style = {} }) {
   );
 }
 
-// Tiny "tail" SVG accent — used as a fluid divider/ornament
 function TailFlourish({ className = "", width = 80, height = 24, color }) {
   const c = color || 'var(--hair)';
   return (

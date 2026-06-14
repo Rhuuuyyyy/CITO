@@ -1,8 +1,3 @@
-"""Concrete adapter: persists Patient via the 'pacientes' DB view.
-
-The view's INSTEAD OF trigger encrypts ``nome`` into ``nome_criptografado``.
-Identity is the integer SERIAL ``id`` (no UUID column exists in the schema).
-"""
 from typing import cast
 
 from sqlalchemy import text
@@ -29,7 +24,6 @@ class PatientRepository:
         self._session = session
 
     async def add(self, patient: Patient) -> Patient:
-        """Persist a new patient and return the entity with its DB id populated."""
         result = await self._session.execute(
             text(
                 """
@@ -84,8 +78,6 @@ class PatientRepository:
             )
         new_id = int(row["id"])
 
-        # Telefone não passa pela view (sem coluna/trigger); grava direto em
-        # tb_pacientes logo após o insert, na mesma transação.
         if patient.telefone:
             await self._session.execute(
                 text("UPDATE tb_pacientes SET telefone = :tel WHERE id = :id"),
@@ -95,7 +87,6 @@ class PatientRepository:
         return patient.model_copy(update={"id": new_id})
 
     async def get_by_id(self, entity_id: int) -> Patient | None:
-        """Look up a patient by integer DB id."""
         result = await self._session.execute(
             text(f"SELECT {_PATIENT_COLUMNS} FROM pacientes WHERE id = :id"),
             {"id": entity_id},
@@ -114,8 +105,6 @@ class PatientRepository:
     async def belongs_to(
         self, *, paciente_id: int, usuario_id: int, is_admin: bool = False
     ) -> bool:
-        """True if the patient exists and (unless admin) was registered by this
-        doctor. Admins may act on any patient."""
         if is_admin:
             result = await self._session.execute(
                 text("SELECT 1 FROM tb_pacientes WHERE id = :id"),
@@ -133,9 +122,6 @@ class PatientRepository:
     async def set_ativo(
         self, *, paciente_id: int, usuario_id: int, ativo: bool, is_admin: bool = False
     ) -> bool:
-        """Archive (ativo=FALSE) or restore (ativo=TRUE) a patient. Scoped to the
-        owning doctor unless ``is_admin`` (admins act on any). Returns True if a
-        row was updated."""
         owner_clause = "" if is_admin else "AND criado_por = :uid"
         result = await self._session.execute(
             text(
@@ -172,14 +158,6 @@ class PatientRepository:
         medicamentos_uso: str | None,
         diagnostico_confirmado_fxs: bool,
     ) -> bool:
-        """Update a patient's demographic/clinical fields directly on
-        ``tb_pacientes`` (the view has no INSTEAD OF UPDATE trigger). The name is
-        re-encrypted with the session PGP key. Scoped to the owning doctor unless
-        ``is_admin``. Returns True if a row was updated.
-
-        ``cpf_hash`` is only written when ``atualizar_cpf`` is True; otherwise the
-        existing CPF is preserved.
-        """
         sets = [
             "nome_criptografado = pgp_sym_encrypt(:nome, current_setting('app.pgp_key', true))",
             "data_nascimento = :data_nascimento",
@@ -231,14 +209,6 @@ class PatientRepository:
     async def delete_cascade(
         self, *, paciente_id: int, usuario_id: int, is_admin: bool = False
     ) -> bool:
-        """Permanently delete a patient and ALL dependent records.
-
-        Order matters (no ON DELETE CASCADE in the schema): children of each
-        evaluation → evaluations → appointments → the patient. The caller must
-        confirm ownership first; the final delete is also scoped by criado_por.
-        The acompanhante is intentionally left (it may be shared by other
-        patients). Runs inside the request transaction (rolls back on error).
-        """
         sub = "SELECT id FROM tb_avaliacoes WHERE paciente_id = :pid"
         for child in (
             "respostas_checklist",
@@ -277,7 +247,7 @@ class PatientRepository:
             id=int(row["id"]),
             cpf=None,
             full_name=cast(str, row["nome"]),
-            birth_date=cast(object, row["data_nascimento"]),  # type: ignore[arg-type]
+            birth_date=cast(object, row["data_nascimento"]),
             sex_at_birth=SexAtBirth(cast(str, row["sexo"])),
             criado_por_db_id=cast(int, row["criado_por"]),
             etnia=Etnia(raw_etnia) if raw_etnia else None,
@@ -295,5 +265,5 @@ class PatientRepository:
             acompanhante_id=int(raw_acompanhante_id) if raw_acompanhante_id is not None else None,
             grau_parentesco=cast("str | None", row["grau_parentesco"]),
             diagnostico_confirmado_fxs=bool(row["diagnostico_confirmado_fxs"]),
-            created_at=cast(object, row["criado_em"]),  # type: ignore[arg-type]
+            created_at=cast(object, row["criado_em"]),
         )

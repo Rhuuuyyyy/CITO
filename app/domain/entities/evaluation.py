@@ -1,4 +1,3 @@
-"""Evaluation domain entity (one consultation between a doctor and a patient)."""
 from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
@@ -20,14 +19,6 @@ class Recommendation(StrEnum):
 
 
 class Evaluation(BaseModel):
-    """A single consultation that produces a clinical decision.
-
-    The Evaluation aggregates the doctor's qualitative observations and the
-    final score / recommendation derived from a ChecklistResponse. Raw
-    checklist answers live on ChecklistResponse, linked by evaluation_id;
-    this entity stays focused on the consultation envelope and its clinical
-    outcome.
-    """
 
     model_config = ConfigDict(
         extra="forbid",

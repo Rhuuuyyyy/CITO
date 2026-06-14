@@ -1,1 +1,0 @@
-"""Data Transfer Objects exchanged between presentation and application layers."""

@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════
-// TRIAGEM — busca autocomplete + modal resultado + PDF profissional
+// TRIAGEM
 // ═══════════════════════════════════════════════════════════════════════
 
 function formatarData(str) {
@@ -82,7 +82,6 @@ const SINTOMA_INFO = {
   agressividade:             'Episódios de comportamento agressivo verbal ou físico, geralmente associados a frustração, sobrecarga sensorial ou dificuldade de regulação emocional — não hostilidade intencional.',
 };
 
-// ── STEP INDICATOR ──────────────────────────────────────────────────
 function StepIndicator({ current }) {
   return (
     <div className="flex items-center justify-center gap-0 mb-10">
@@ -116,7 +115,6 @@ function StepIndicator({ current }) {
   );
 }
 
-// ── AUTOCOMPLETE DE BUSCA ────────────────────────────────────────────
 function SearchAutocomplete({ placeholder, items, value, onSelect, onClear, displayKey = 'label', error }) {
   const [query, setQuery] = useState(value || '');
   const [open, setOpen]   = useState(false);
@@ -185,7 +183,6 @@ function SearchAutocomplete({ placeholder, items, value, onSelect, onClear, disp
   );
 }
 
-// ── MODAL DE RESULTADO ───────────────────────────────────────────────
 function ModalResultado({ score, limiar, paciente, encaminhar, onDownload, onFechar }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 anim-fade-in"
@@ -193,7 +190,6 @@ function ModalResultado({ score, limiar, paciente, encaminhar, onDownload, onFec
       <div className="w-full max-w-lg rounded-3xl card-shadow anim-fade-up overflow-hidden"
         style={{ background: 'var(--surface)', border: '1px solid var(--hair)' }}>
 
-        {/* Faixa de resultado */}
         <div className="px-8 pt-8 pb-6 text-center relative overflow-hidden"
           style={{ background: 'var(--ink)' }}>
           <div className="absolute inset-0 pointer-events-none select-none flex items-center justify-center"
@@ -219,7 +215,6 @@ function ModalResultado({ score, limiar, paciente, encaminhar, onDownload, onFec
           </div>
         </div>
 
-        {/* Score breakdown */}
         <div className="px-8 py-6">
           <div className="flex items-center justify-between mb-4">
             <div>
@@ -236,7 +231,6 @@ function ModalResultado({ score, limiar, paciente, encaminhar, onDownload, onFec
             </div>
           </div>
 
-          {/* Barra de score */}
           <div className="h-2.5 rounded-full overflow-hidden mb-1"
             style={{ background: 'var(--hair-soft)' }}>
             <div className="h-full rounded-full transition-all duration-700"
@@ -258,7 +252,6 @@ function ModalResultado({ score, limiar, paciente, encaminhar, onDownload, onFec
           </p>
         </div>
 
-        {/* Ações */}
         <div className="px-8 pb-8 flex flex-col sm:flex-row gap-3">
           <button onClick={onDownload}
             className="flex-1 inline-flex items-center justify-center gap-2 py-3.5 rounded-full text-[13.5px] font-medium lift"
@@ -292,17 +285,13 @@ function TriagemPage({ onNav, usuario }) {
   const [salvando, setSalvando] = useState(false);
   const [modalResultado, setModalResultado] = useState(false);
 
-  const [infoAtivo, setInfoAtivo] = useState(null); // id do sintoma com tooltip aberto
+  const [infoAtivo, setInfoAtivo] = useState(null);
   const [paciente, setPaciente] = useState({ nome: '', dataNasc: '', sexo: '', cpf: '' });
   const [acomp, setAcomp]       = useState({ nome: '', relacao: '', telefone: '', email: '' });
-  const [acompId, setAcompId]   = useState(null); // id do acompanhante selecionado (modelo B)
-  const [novoAcomp, setNovoAcomp] = useState(null); // null = fechado; obj = form de cadastro aberto
+  const [acompId, setAcompId]   = useState(null);
+  const [novoAcomp, setNovoAcomp] = useState(null);
   const [salvandoAcomp, setSalvandoAcomp] = useState(false);
-  // true = acompanhante recém-criado na triagem (precisa definir o parentesco).
-  // false = acompanhante já cadastrado, cuja relação veio do cadastro do paciente.
   const [acompNovoCriado, setAcompNovoCriado] = useState(false);
-  // Acompanhantes já vinculados ao paciente selecionado (com a relação do
-  // cadastro / triagens anteriores), para não perguntar o parentesco de novo.
   const [pacienteAcomps, setPacienteAcomps] = useState([]);
   const [respostas, setRespostas] = useState(Object.fromEntries(SINTOMAS.map((s) => [s.id, null])));
   const [sintomaIdMap, setSintomaIdMap] = useState({});
@@ -315,7 +304,6 @@ function TriagemPage({ onNav, usuario }) {
   const [pacientesDb, setPacientesDb]   = useState([]);
   const [acompsDb, setAcompsDb]         = useState([]);
 
-  // Carrega pacientes e sintomas do backend
   useEffect(() => {
     api.getSintomas().then((data) => {
       const map = {};
@@ -335,7 +323,6 @@ function TriagemPage({ onNav, usuario }) {
     }).catch((err) => console.error('Erro ao carregar acompanhantes:', err));
   }, []);
 
-  // Itens para autocomplete de paciente (nome já vem mascarado da API)
   const pacientesItems = pacientesDb.map(p => ({
     id: p.id,
     label: p.nome,
@@ -343,7 +330,6 @@ function TriagemPage({ onNav, usuario }) {
     raw: p,
   }));
 
-  // Itens para autocomplete de acompanhante (filtrado pelo paciente selecionado)
   const acompsItems = acompsDb.map(a => ({
     id: a.id,
     label: a.nome || '',
@@ -366,13 +352,10 @@ function TriagemPage({ onNav, usuario }) {
     setPacienteAcomps([]);
     setErrors({});
 
-    // Carrega o acompanhante já cadastrado para o paciente, junto da relação
-    // definida no cadastro — assim a triagem não pergunta o parentesco de novo.
     try {
       const det = await api.getPacienteDetalhe(p.id);
       const acomps = det.acompanhantes || [];
       setPacienteAcomps(acomps);
-      // Prefere o acompanhante com relação já definida (o do cadastro).
       const reg = acomps.find((a) => a.relacao) || acomps[0];
       if (reg) {
         setAcomp({
@@ -391,8 +374,6 @@ function TriagemPage({ onNav, usuario }) {
 
   function selecionarAcomp(item) {
     const a = item.raw;
-    // Se este acompanhante já está vinculado ao paciente, reaproveita a relação
-    // (grau de parentesco) definida no cadastro/triagens anteriores — não pergunta de novo.
     const conhecido = pacienteAcomps.find((x) => x.id === (item.id || a.id));
     setAcomp({
       nome: a.nome || '',
@@ -437,7 +418,6 @@ function TriagemPage({ onNav, usuario }) {
     setErrors({});
   }
 
-  // ── Score ──
   const sintomasFiltrados = SINTOMAS.filter((s) => paciente.sexo === 'F' ? s.pesoF !== null : true);
   const calcScore = () => {
     const isM = paciente.sexo === 'M';
@@ -451,7 +431,6 @@ function TriagemPage({ onNav, usuario }) {
   };
   const limiar = () => paciente.sexo === 'M' ? LIMIAR_M : LIMIAR_F;
 
-  // ── Validação ──
   function validar(s) {
     const e = {};
     if (s === 0 && !pacienteId)
@@ -476,7 +455,6 @@ function TriagemPage({ onNav, usuario }) {
   const respondidas = sintomasFiltrados.filter((s) => respostas[s.id] !== null).length;
   const progresso   = sintomasFiltrados.length ? Math.round((respondidas / sintomasFiltrados.length) * 100) : 0;
 
-  // ── Salvar triagem ──
   async function salvarTriagem() {
     if (!usuario?.id || !usuario?.sessao_id) return false;
     setSalvando(true);
@@ -497,8 +475,6 @@ function TriagemPage({ onNav, usuario }) {
         return false;
       }
 
-      // O backend calcula o score, aplica o limiar, cria o encaminhamento quando
-      // indicado e registra a auditoria — tudo numa única chamada.
       await api.createAvaliacao({
         paciente_id: idPaciente,
         sessao_id: usuario.sessao_id,
@@ -523,9 +499,6 @@ function TriagemPage({ onNav, usuario }) {
     }
   }
 
-  // ── PDF profissional ──
-  // O desenho do laudo vive em src/lib/laudo.jsx (window.gerarLaudoPDF), para
-  // que a tela de Pacientes reimprima exatamente o mesmo laudo de uma triagem.
   async function gerarPDF() {
     await window.gerarLaudoPDF({
       nome: paciente.nome,
@@ -541,11 +514,9 @@ function TriagemPage({ onNav, usuario }) {
     });
   }
 
-  // ── RENDER ──────────────────────────────────────────────────────────
   return (
     <div className="anim-fade-in max-w-3xl mx-auto pb-12">
 
-      {/* Header */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full mb-4"
           style={{ background: 'var(--hover-tint)', color: 'var(--ink)' }}>
@@ -562,7 +533,6 @@ function TriagemPage({ onNav, usuario }) {
 
       <StepIndicator current={step} />
 
-      {/* ── STEP 0 — PACIENTE ── */}
       {step === 0 && (
         <Card className="p-6 sm:p-8">
           <h2 className="font-display text-[26px] leading-none mb-1">Dados do paciente</h2>
@@ -595,7 +565,6 @@ function TriagemPage({ onNav, usuario }) {
         </Card>
       )}
 
-      {/* ── STEP 1 — ACOMPANHANTE ── */}
       {step === 1 && (
         <Card className="p-6 sm:p-8">
           <h2 className="font-display text-[26px] leading-none mb-1">Acompanhante</h2>
@@ -613,7 +582,6 @@ function TriagemPage({ onNav, usuario }) {
             />
           </Field>
 
-          {/* Cadastrar um acompanhante novo na hora */}
           {!novoAcomp && (
             <button type="button"
               onClick={() => setNovoAcomp({ nome: '', telefone: '', email: '' })}
@@ -686,7 +654,6 @@ function TriagemPage({ onNav, usuario }) {
             </div>
           )}
 
-          {/* Resumo paciente */}
           <div className="mt-4 rounded-2xl px-5 py-4 flex items-center gap-3"
             style={{ background: 'var(--paper-2)', border: '1px solid var(--hair-soft)' }}>
             <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-semibold"
@@ -702,7 +669,6 @@ function TriagemPage({ onNav, usuario }) {
         </Card>
       )}
 
-      {/* ── STEP 2 — QUESTIONÁRIO ── */}
       {step === 2 && (
         <div>
           <div className="mb-5">
@@ -806,7 +772,6 @@ function TriagemPage({ onNav, usuario }) {
         </div>
       )}
 
-      {/* ── STEP 3 — HISTÓRICO FAMILIAR ── */}
       {step === 3 && (
         <Card className="p-6 sm:p-8">
           <h2 className="font-display text-[26px] leading-none mb-1">Histórico familiar</h2>
@@ -844,7 +809,6 @@ function TriagemPage({ onNav, usuario }) {
         </Card>
       )}
 
-      {/* ── STEP 4 — REVISÃO ── */}
       {step === 4 && (
         <div className="space-y-4">
           <Card className="p-6">
@@ -893,7 +857,6 @@ function TriagemPage({ onNav, usuario }) {
             </Card>
           )}
 
-          {/* Score card */}
           <Card className="p-6 sm:p-8 relative overflow-hidden" style={{ background: 'var(--ink)' }}>
             <div className="absolute -bottom-6 -right-2 pointer-events-none" style={{ opacity: 0.12, width: 220 }}>
               <img src="assets/cito-tight.png" alt="" className="cito-logo-img on-ink w-full select-none" />
@@ -927,7 +890,6 @@ function TriagemPage({ onNav, usuario }) {
         </div>
       )}
 
-      {/* ── NAVEGAÇÃO ── */}
       <div className="flex items-center justify-between mt-8">
         <div>
           {step > 0 && <BtnGhost onClick={voltar}>{Icon.chevronLeft} Voltar</BtnGhost>}
@@ -948,7 +910,6 @@ function TriagemPage({ onNav, usuario }) {
         </div>
       </div>
 
-      {/* ── MODAL DE RESULTADO ── */}
       {modalResultado && (
         <ModalResultado
           score={calcScore()}

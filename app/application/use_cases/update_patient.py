@@ -1,8 +1,3 @@
-"""UpdatePatientUseCase — edit an existing patient's demographic/clinical data.
-
-HTTP-blind: raises domain/ValueError exceptions, never HTTPException.
-RBAC: a doctor edits only their own patients; an admin edits any.
-"""
 from __future__ import annotations
 
 from sqlalchemy.exc import IntegrityError
@@ -15,8 +10,6 @@ from app.presentation.api.v1.schemas.patient import PatientUpdateRequest
 
 
 class UpdatePatientUseCase:
-    """Updates a patient's editable fields. The caregiver(s) are managed per
-    evaluation (model B), so they are intentionally out of scope here."""
 
     def __init__(self, patients: PatientRepository) -> None:
         self._patients = patients
@@ -29,7 +22,6 @@ class UpdatePatientUseCase:
         is_admin: bool,
         request: PatientUpdateRequest,
     ) -> None:
-        # Validate value objects / enums (raise ValueError on bad input).
         sexo = SexAtBirth(request.sexo.upper()).value
         etnia = Etnia(request.etnia.lower()).value if request.etnia else None
         escolaridade = (
@@ -62,7 +54,6 @@ class UpdatePatientUseCase:
                 diagnostico_confirmado_fxs=request.diagnostico_confirmado_fxs,
             )
         except IntegrityError as exc:
-            # Quase sempre o UNIQUE de cpf_hash (CPF já usado por outro paciente).
             raise ConflictError("Já existe um paciente com este CPF.") from exc
 
         if not updated:

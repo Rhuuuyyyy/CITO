@@ -1,4 +1,3 @@
-"""Outbound adapter for tb_agendamentos (scheduling)."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -20,7 +19,6 @@ class AgendamentoItem:
 
 
 class AgendamentoRepository:
-    """Lists and creates appointments for the authenticated doctor."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -103,7 +101,6 @@ class AgendamentoRepository:
         data_hora: datetime,
         status: str,
     ) -> AgendamentoItem | None:
-        """Update an appointment owned by the doctor. Returns None if not found."""
         result = await self._session.execute(
             text(
                 """
@@ -136,7 +133,6 @@ class AgendamentoRepository:
         )
 
     async def delete(self, *, agendamento_id: int, usuario_id: int) -> bool:
-        """Hard-delete an appointment owned by the doctor. True if a row went."""
         result = await self._session.execute(
             text(
                 "DELETE FROM tb_agendamentos WHERE id = :id AND usuario_id = :uid "

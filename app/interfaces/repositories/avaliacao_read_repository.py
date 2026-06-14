@@ -1,4 +1,3 @@
-"""Read-only adapter for clinical evaluations history."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -11,7 +10,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 @dataclass(frozen=True)
 class AvaliacaoHistoricoItem:
-    """One evaluation record returned for history queries."""
 
     avaliacao_id: int
     paciente_id: int
@@ -23,7 +21,6 @@ class AvaliacaoHistoricoItem:
 
 @dataclass(frozen=True)
 class SintomaRespostaItem:
-    """One per-symptom answer of an evaluation, for reprinting the laudo."""
 
     descricao: str
     presente: bool
@@ -31,7 +28,6 @@ class SintomaRespostaItem:
 
 @dataclass(frozen=True)
 class HistoricoFamiliarItem:
-    """Family history flags recorded for one evaluation."""
 
     deficiencia_intelectual: bool
     falencia_ovariana_precoce: bool
@@ -46,7 +42,6 @@ class HistoricoFamiliarItem:
 
 @dataclass(frozen=True)
 class AvaliacaoFullDetail:
-    """Complete evaluation needed to reprint the screening laudo (PDF)."""
 
     avaliacao_id: int
     data_avaliacao: datetime
@@ -64,7 +59,6 @@ class AvaliacaoFullDetail:
 
 
 class AvaliacaoReadRepository:
-    """Reads evaluation history from the 'avaliacoes' view."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -123,12 +117,6 @@ class AvaliacaoReadRepository:
         usuario_id: int,
         is_admin: bool = False,
     ) -> AvaliacaoFullDetail | None:
-        """Full evaluation (patient, caregiver, symptoms, family history).
-
-        Scoped to the requesting doctor through ``pacientes.criado_por`` unless
-        ``is_admin`` (admins may read any evaluation); returns ``None`` when the
-        evaluation does not exist or is out of scope.
-        """
         owner_clause = "" if is_admin else "AND p.criado_por = :usuario_id"
         head = await self._session.execute(
             text(

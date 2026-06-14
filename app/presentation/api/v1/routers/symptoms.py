@@ -1,4 +1,3 @@
-"""HTTP router for the symptom catalog."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends

@@ -4,7 +4,6 @@
 function Sidebar({ active, onNav, open, onClose, onLogout, usuario }) {
   const isAdmin = usuario?.tipo === 'admin';
 
-  // Identidade da conta logada (nome real vindo do login, não estático).
   const nomeUsuario = usuario?.nome || (isAdmin ? 'Administrador' : 'Médico');
   const iniciais = (nomeUsuario.trim().split(/\s+/).filter(Boolean).slice(0, 2)
     .map((p) => p[0]).join('') || 'U').toUpperCase();
@@ -28,7 +27,6 @@ function Sidebar({ active, onNav, open, onClose, onLogout, usuario }) {
     },
     {
       label: 'Sistema', items: [
-        // 'Usuários' só aparece para admin; o backend também exige admin (403).
         ...(isAdmin ? [{ id: 'usuarios', label: 'Usuários', icon: Icon.users }] : []),
         { id: 'config', label: 'Configurações', icon: Icon.settings },
       ]

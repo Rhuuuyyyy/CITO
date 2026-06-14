@@ -1,4 +1,3 @@
-"""CreateAgendamentoUseCase — schedule a new appointment for the doctor."""
 from __future__ import annotations
 
 from datetime import datetime

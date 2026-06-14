@@ -1,4 +1,3 @@
-"""Request/response schemas for the scheduling (agendamentos) endpoints."""
 from __future__ import annotations
 
 from datetime import datetime

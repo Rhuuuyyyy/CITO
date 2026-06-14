@@ -1,10 +1,3 @@
-"""External adapter for the BrasilAPI national holidays service.
-
-Relies only on the Python standard library (urllib) so the runtime keeps no
-extra dependency. The blocking network call is pushed to a worker thread, and
-each successful yearly response is cached in-process because the holiday list
-for a given year does not change.
-"""
 from __future__ import annotations
 
 import asyncio
@@ -18,7 +11,6 @@ _cache: dict[int, list[dict[str, str]]] = {}
 
 
 class FeriadosClient:
-    """Fetches the Brazilian national holidays for a given year."""
 
     async def list_by_year(self, ano: int) -> list[dict[str, str]]:
         if ano in _cache:

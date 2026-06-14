@@ -1,1 +1,0 @@
-"""API v1 — first stable contract exposed to the frontend team."""

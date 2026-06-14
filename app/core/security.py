@@ -1,11 +1,3 @@
-"""JWT token issuance and verification — stdlib HS256.
-
-Architecture note:
-  Implements HS256 using Python's standard library only (hmac + hashlib).
-  No dependency on python-jose or PyJWT — avoids the system cryptography
-  package compatibility issue on this host.
-  Sprint 5 can swap this for RS256 by replacing only this file.
-"""
 from __future__ import annotations
 
 import base64
@@ -23,17 +15,16 @@ _ACCESS_TOKEN_TTL_SECONDS: int = 1800
 _ALGORITHM = "HS256"
 
 class JWTError(Exception):
-    """Raised when JWT verification fails for any reason."""
+    pass
 
 
 @dataclass(frozen=True)
 class TokenClaims:
-    """Verified claims extracted from a valid JWT."""
 
-    usuario_id: int    # DB integer PK from 'usuarios.id'
-    role: str          # 'doctor' | 'admin'
-    sessao_id: int     # FK to tb_log_sessoes.id (claim 'sid')
-    exp: float         # expiry as POSIX timestamp
+    usuario_id: int
+    role: str
+    sessao_id: int
+    exp: float
 
 
 def _b64url_encode(data: bytes) -> str:
@@ -61,7 +52,6 @@ def issue_access_token(
     sessao_id: int,
     ttl_seconds: int = _ACCESS_TOKEN_TTL_SECONDS,
 ) -> str:
-    """Issue a signed HS256 JWT access token."""
     now = time.time()
     header = _b64url_encode(
         json.dumps(
@@ -87,11 +77,6 @@ def issue_access_token(
 
 
 def verify_access_token(token: str) -> TokenClaims:
-    """Verify a JWT and return its claims.
-
-    Raises:
-        JWTError: If the token is invalid, expired, or tampered.
-    """
     parts = token.split(".")
     if len(parts) != 3:
         raise JWTError("Malformed JWT: expected 3 parts")

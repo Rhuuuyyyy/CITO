@@ -1,8 +1,3 @@
-"""Typed application settings loaded from environment variables.
-
-Centralising configuration here keeps every other layer free of `os.environ`
-look-ups and gives FastAPI a single dependency-injectable source of truth.
-"""
 import json
 from functools import lru_cache
 from typing import Annotated
@@ -27,8 +22,6 @@ class Settings(BaseSettings):
 
     secret_key: str = Field(default="change-me-in-environment", min_length=8)
 
-    # NoDecode: don't let pydantic-settings JSON-parse the env var before we do.
-    # Accepts both JSON (["http://a","http://b"]) and CSV (http://a,http://b).
     cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     @field_validator("cors_origins", mode="before")
@@ -50,5 +43,4 @@ class Settings(BaseSettings):
 
 @lru_cache
 def get_settings() -> Settings:
-    """Return a cached 'Settings' instance. Use as FastAPI dependendy."""
     return Settings()

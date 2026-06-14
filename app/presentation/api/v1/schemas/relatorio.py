@@ -1,4 +1,3 @@
-"""Response schema for the reports endpoint (Config → Relatórios)."""
 from __future__ import annotations
 
 from datetime import datetime

@@ -1,8 +1,3 @@
-"""Outbound adapter: persists family history into tb_historico_familiar.
-
-This table has no PII, so it is written directly (no decryption view needed),
-consistent with respostas_checklist and the log tables.
-"""
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +5,6 @@ from app.application.dtos.anamnesis import HistoricoFamiliarDTO
 
 
 class HistoricoFamiliarRepository:
-    """Persists the once-per-evaluation family history record."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session

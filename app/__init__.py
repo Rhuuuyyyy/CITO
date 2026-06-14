@@ -1,1 +1,0 @@
-"""CITO Backend application package."""

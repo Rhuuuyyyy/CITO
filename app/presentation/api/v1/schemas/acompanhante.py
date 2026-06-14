@@ -1,4 +1,3 @@
-"""Schemas for the caregiver endpoints."""
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -14,7 +13,6 @@ class AcompanhanteListItemSchema(BaseModel):
 
 
 class AcompanhanteCreateRequest(BaseModel):
-    """Cadastro de um acompanhante novo (para vincular a uma avaliação)."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -25,7 +23,6 @@ class AcompanhanteCreateRequest(BaseModel):
 
 
 class AcompanhanteUpdateRequest(BaseModel):
-    """Edição dos dados de contato de um acompanhante existente."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 

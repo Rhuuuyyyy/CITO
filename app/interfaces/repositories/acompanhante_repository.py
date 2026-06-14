@@ -1,8 +1,3 @@
-"""Concrete adapter: persists Acompanhante via the 'acompanhantes' DB view.
-
-The view's INSTEAD OF trigger encrypts ``nome`` into ``nome_criptografado``;
-the application always works with clear text. The ``id`` is a DB SERIAL.
-"""
 from dataclasses import dataclass
 
 from sqlalchemy import text
@@ -25,7 +20,6 @@ class AcompanhanteRepository:
         self._session = session
 
     async def add(self, acompanhante: Acompanhante) -> Acompanhante:
-        """Persist a new acompanhante and return it with the DB id populated."""
         result = await self._session.execute(
             text(
                 """
@@ -49,11 +43,6 @@ class AcompanhanteRepository:
         return acompanhante.model_copy(update={"id": int(row["id"])})
 
     async def list_by_doctor(self, *, usuario_id: int) -> list[AcompanhanteListItem]:
-        """Caregivers linked to a patient registered by the requesting doctor.
-
-        Scoped through ``pacientes.acompanhante_id`` so a doctor never sees the
-        caregivers (name/phone/email in clear) of another doctor's patients.
-        """
         result = await self._session.execute(
             text(
                 """
@@ -85,14 +74,6 @@ class AcompanhanteRepository:
         email: str | None,
         restrict_to_usuario_id: int | None,
     ) -> bool:
-        """Edit a caregiver's name/phone/email. Returns False when not found or
-        (when restricted) the caregiver is not linked to any of the doctor's
-        patients — cadastro or any of their triagens (modelo B).
-
-        There is no INSTEAD OF UPDATE trigger on the view, so this writes the
-        encrypted name directly to ``tb_acompanhantes`` with pgp_sym_encrypt,
-        the same way the INSERT trigger does.
-        """
         params: dict[str, object] = {
             "id": acompanhante_id,
             "nome": nome,

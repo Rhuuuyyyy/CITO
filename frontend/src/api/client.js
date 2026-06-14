@@ -1,27 +1,19 @@
 // ═══════════════════════════════════════════════════════════════════════
 // CITO — Central API client
-// Single surface for all backend communication. No component should call
-// fetch() directly. Replaces the old direct-to-Supabase client.
-//
-// Configure the backend URL here (default: local uvicorn). The backend must
-// allow this page's origin in CORS_ORIGINS.
 // ═══════════════════════════════════════════════════════════════════════
 const API_BASE = (window.CITO_API_BASE || '/api/v1');
 
 const api = {
   _token: null,
 
-  // Set by the app shell. Called when any authenticated request returns 401
-  // (expired/invalid JWT) so the UI can drop back to the login screen.
   onUnauthorized: null,
 
-  // ── Session (JWT + identity) in sessionStorage ──────────────────────────
   setSession(token, user) {
     this._token = token;
     try {
       sessionStorage.setItem('cito-token', token);
       sessionStorage.setItem('cito-user', JSON.stringify(user));
-    } catch (e) { /* storage unavailable — keep in-memory token */ }
+    } catch (e) {}
   },
   getToken() {
     if (this._token) return this._token;
@@ -42,7 +34,6 @@ const api = {
     } catch (e) {}
   },
 
-  // ── Core request helper (JSON + Bearer auth) ────────────────────────────
   async _request(method, path, body) {
     const headers = {};
     const token = this.getToken();
@@ -61,11 +52,10 @@ const api = {
     const text = await res.text();
     if (text) { try { data = JSON.parse(text); } catch (e) { data = text; } }
 
-    // Session expired/invalid: drop credentials and let the shell return to login.
     if (res.status === 401) {
       this.clearSession();
       if (typeof this.onUnauthorized === 'function') {
-        try { this.onUnauthorized(); } catch (e) { /* shell not mounted */ }
+        try { this.onUnauthorized(); } catch (e) {}
       }
     }
 
@@ -81,9 +71,7 @@ const api = {
   get(path) { return this._request('GET', path); },
   post(path, body) { return this._request('POST', path, body); },
 
-  // ── Auth ────────────────────────────────────────────────────────────────
   async login(email, senha) {
-    // OAuth2 password flow: application/x-www-form-urlencoded {username, password}
     const body = new URLSearchParams();
     body.set('username', email);
     body.set('password', senha);
@@ -97,7 +85,7 @@ const api = {
       try { const d = await res.json(); detail = d.detail || detail; } catch (e) {}
       const err = new Error(detail); err.status = res.status; throw err;
     }
-    const data = await res.json(); // {access_token, ..., usuario_id, tipo, nome, crm, especialidade}
+    const data = await res.json();
     const user = {
       id: data.usuario_id,
       sessao_id: data.sessao_id,
@@ -115,13 +103,11 @@ const api = {
         await this._request('POST', '/auth/logout?sessao_id=' + encodeURIComponent(sessaoId));
       }
     } catch (e) {
-      // Best-effort: clear the local session even if the server call fails.
     } finally {
       this.clearSession();
     }
   },
 
-  // ── Domain endpoints ─────────────────────────────────────────────────────
   getSintomas() { return this.get('/sintomas'); },
   getAcompanhantes() { return this.get('/acompanhantes'); },
   createAcompanhante(body) { return this.post('/acompanhantes', body); },
@@ -173,7 +159,6 @@ const api = {
 
   getFeriados(ano) { return this.get('/feriados/' + ano); },
 
-  // ── Usuários (admin) ─────────────────────────────────────────────────────
   getUsuarios() { return this.get('/usuarios'); },
   createUsuario(body) { return this.post('/usuarios', body); },
   setUsuarioAtivo(id, ativo) { return this._request('PATCH', '/usuarios/' + id, { ativo }); },

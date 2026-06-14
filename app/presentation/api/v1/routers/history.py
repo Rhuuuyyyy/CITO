@@ -1,4 +1,3 @@
-"""HTTP router for patient history and analytics dashboard."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status

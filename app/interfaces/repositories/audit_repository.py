@@ -1,10 +1,3 @@
-"""Outbound adapter: appends to the audit trail via fn_registrar_auditoria.
-
-Audit writes are **best-effort**: each call runs inside a SAVEPOINT so that an
-audit failure (e.g. the function/role being unavailable) never aborts the
-surrounding clinical transaction. The trail mirrors what the legacy frontend
-recorded (PACIENTE_CRIADO, AVALIACAO_FINALIZADA, ...).
-"""
 from __future__ import annotations
 
 import logging
@@ -28,7 +21,6 @@ class AuditRepository:
         tabela: str,
         registro_id: str,
     ) -> None:
-        """Record an audit entry. Never raises — failures are logged and swallowed."""
         try:
             async with self._session.begin_nested():
                 await self._session.execute(
@@ -51,5 +43,5 @@ class AuditRepository:
                         "registro_id": registro_id,
                     },
                 )
-        except Exception:  # noqa: BLE001 — audit must never break the main flow
+        except Exception:
             logger.warning("Falha ao registrar auditoria (%s) — ignorada.", acao)

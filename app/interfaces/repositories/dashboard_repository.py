@@ -1,4 +1,3 @@
-"""Read-only adapter for the anonymised statistics dashboard."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,10 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 @dataclass(frozen=True)
 class DashboardRow:
-    """One aggregated row from the anonymised dashboard view.
-
-    Columns mirror vw_dashboard_anonimizado (per docs/database_report.md §4.4).
-    """
 
     sintoma: str | None
     sexo: str | None
@@ -28,7 +23,6 @@ class DashboardRow:
 
 @dataclass(frozen=True)
 class DashboardSummary:
-    """Operational summary for the authenticated doctor's personal dashboard."""
 
     total_pacientes: int
     avaliacoes_hoje: int
@@ -37,7 +31,6 @@ class DashboardSummary:
 
 
 class DashboardRepository:
-    """Reads from the vw_dashboard_anonimizado materialised view."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -94,7 +87,6 @@ class DashboardRepository:
     async def get_summary(
         self, *, usuario_id: int, is_admin: bool = False
     ) -> DashboardSummary:
-        # Admin vê os números globais; o médico só dos seus pacientes.
         pac_clause = "" if is_admin else "WHERE criado_por = :usuario_id"
         aval_clause = "" if is_admin else "p.criado_por = :usuario_id AND"
         aval_clause_only = "" if is_admin else "WHERE p.criado_por = :usuario_id"
@@ -152,7 +144,6 @@ class DashboardRepository:
         )
 
     async def refresh_materialized_view(self) -> None:
-        """Trigger a non-blocking refresh of the materialized view."""
         await self._session.execute(
             text(
                 "REFRESH MATERIALIZED VIEW CONCURRENTLY vw_dashboard_anonimizado"

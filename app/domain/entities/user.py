@@ -1,9 +1,3 @@
-"""User domain entity (physicians and administrators).
-
-Pure domain code: no SQLAlchemy, no FastAPI, no I/O. Persistence is
-delegated to IUserRepository (see app/domain/ports/user_repository.py)
-and bound to a concrete adapter at the composition root.
-"""
 from datetime import UTC, datetime
 from enum import StrEnum
 from uuid import UUID, uuid4
@@ -11,19 +5,13 @@ from uuid import UUID, uuid4
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
-class UserRole(StrEnum):  # Enum para deifinir os tipos de roles que existem no sistema
-    """Roles the system recognises in v1."""
+class UserRole(StrEnum):
 
     DOCTOR = "doctor"
     ADMIN = "admin"
 
 
 class User(BaseModel):
-    """Authenticated identity: physician or system administrator.
-
-    The password_hash field stores an opaque digest produced by an
-    IPasswordHasher adapter — the entity itself never sees plaintext.
-    """
 
     model_config = ConfigDict(
         extra="forbid",

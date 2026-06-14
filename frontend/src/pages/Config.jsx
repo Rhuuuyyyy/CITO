@@ -1,8 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════
 // CONFIG
 // ═══════════════════════════════════════════════════════════════════════
-
-// ── Mini gráfico de barras ───────────────────────────────────────────
 function MiniBarChart({ data, maxVal, color = 'var(--ink)' }) {
   return (
     <div className="flex items-end gap-1.5 h-20">
@@ -20,7 +18,6 @@ function MiniBarChart({ data, maxVal, color = 'var(--ink)' }) {
   );
 }
 
-// ── Card de configuração clicável ────────────────────────────────────
 function ConfigCard({ icon, tag, title, desc, onClick }) {
   return (
     <div onClick={onClick}
@@ -38,22 +35,19 @@ function ConfigCard({ icon, tag, title, desc, onClick }) {
   );
 }
 
-// ── Seção de relatórios / gráficos ───────────────────────────────────
 function RelatoriosSection({ usuario, onBack }) {
   const isAdmin = usuario?.tipo === 'admin';
   const [norm, setNorm]   = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Filtros
-  const [nomeF, setNomeF]           = useState('');     // busca por nome do paciente
+  const [nomeF, setNomeF]           = useState('');
   const [dataInicio, setDataInicio] = useState('');
   const [dataFim, setDataFim]       = useState('');
-  const [sexoF, setSexoF]           = useState('');     // '' | 'M' | 'F'
-  const [medicoF, setMedicoF]       = useState('');     // '' = todos (admin)
-  const [medicos, setMedicos]       = useState([]);     // lista p/ o filtro (admin)
-  const [imprimindo, setImprimindo] = useState(null);   // avaliacao_id em impressão
+  const [sexoF, setSexoF]           = useState('');
+  const [medicoF, setMedicoF]       = useState('');
+  const [medicos, setMedicos]       = useState([]);
+  const [imprimindo, setImprimindo] = useState(null);
 
-  // Admin: carrega a lista de médicos para o seletor de filtro.
   useEffect(() => {
     if (!isAdmin) return;
     api.getUsuarios()
@@ -61,7 +55,6 @@ function RelatoriosSection({ usuario, onBack }) {
       .catch((err) => console.error('Erro ao carregar médicos:', err));
   }, [isAdmin]);
 
-  // Recarrega sempre que um filtro muda (debounce leve nas datas).
   useEffect(() => {
     const handle = setTimeout(() => {
       setLoading(true);
@@ -96,7 +89,6 @@ function RelatoriosSection({ usuario, onBack }) {
   }
   const temFiltro = nomeF || dataInicio || dataFim || sexoF || medicoF;
 
-  // Gera/baixa o PDF do laudo de uma triagem (mesmo fluxo do prontuário).
   async function imprimirLaudo(avaliacaoId) {
     if (!avaliacaoId) return;
     setImprimindo(avaliacaoId);
@@ -162,8 +154,6 @@ function RelatoriosSection({ usuario, onBack }) {
   const totalSeisMeses = monthData.reduce((s, d) => s + d.val, 0);
   const encSemana = encData.reduce((s, d) => s + d.val, 0);
   const taxaEnc = norm.length ? Math.round(totalEnc / norm.length * 100) : 0;
-  // Lista exibida: ao buscar por nome, mostra todas as triagens que casam
-  // (até 50); sem busca, as 5 mais recentes.
   const nomeQ = nomeF.trim().toLowerCase();
   const ultimas = nomeQ
     ? norm.filter(a => (a.nome || '').toLowerCase().includes(nomeQ)).slice(0, 50)
@@ -188,7 +178,6 @@ function RelatoriosSection({ usuario, onBack }) {
         </p>
       </div>
 
-      {/* Filtros */}
       <div className="rounded-3xl p-4 card-shadow"
         style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
         <div className="flex flex-wrap items-end gap-3">
@@ -243,7 +232,6 @@ function RelatoriosSection({ usuario, onBack }) {
         </div>
       </div>
 
-      {/* Resumo numérico */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         {[
           { label: 'Triagens (semana)', val: String(triagensSemana) },
@@ -261,7 +249,6 @@ function RelatoriosSection({ usuario, onBack }) {
         ))}
       </div>
 
-      {/* Gráficos */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="rounded-3xl p-5 card-shadow"
           style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
@@ -291,7 +278,6 @@ function RelatoriosSection({ usuario, onBack }) {
         </div>
       </div>
 
-      {/* Triagens recentes */}
       <div className="rounded-3xl overflow-hidden card-shadow"
         style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
         <div className="px-6 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
@@ -358,7 +344,6 @@ function RelatoriosSection({ usuario, onBack }) {
   );
 }
 
-// ── Seção de parâmetros do escore (consulta, somente leitura) ────────
 function ParametrosScoreSection({ onBack }) {
   const PDF_URL = 'https://doi.org/10.1101/2025.10.21.25338500';
   const sintomas = (window.LAUDO && window.LAUDO.SINTOMAS) || [];
@@ -386,7 +371,6 @@ function ParametrosScoreSection({ onBack }) {
         </p>
       </div>
 
-      {/* Referência científica */}
       <div className="rounded-3xl p-6 space-y-4"
         style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
         <div className="flex items-start justify-between gap-4">
@@ -433,7 +417,6 @@ function ParametrosScoreSection({ onBack }) {
         </div>
       </div>
 
-      {/* Limiares e métricas por sexo */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {['M', 'F'].map((sx) => {
           const p = PARAM[sx];
@@ -470,7 +453,6 @@ function ParametrosScoreSection({ onBack }) {
         })}
       </div>
 
-      {/* Tabela de pesos por sintoma */}
       <div className="rounded-3xl overflow-hidden card-shadow"
         style={{ background: 'var(--surface)', border: '1px solid var(--hair-soft)' }}>
         <div className="px-6 py-4" style={{ borderBottom: '1px solid var(--hair-soft)' }}>
@@ -528,7 +510,6 @@ function ParametrosScoreSection({ onBack }) {
         </table>
       </div>
 
-      {/* Nota explicativa */}
       <div className="rounded-2xl px-5 py-4 text-[12px] leading-relaxed"
         style={{ background: 'var(--paper-2)', border: '1px solid var(--hair-soft)', color: 'var(--muted)' }}>
         O escore é a soma dos pesos dos sintomas presentes, calculados conforme o sexo do paciente. Quando o
@@ -544,7 +525,7 @@ function ParametrosScoreSection({ onBack }) {
 // PÁGINA PRINCIPAL DE CONFIG
 // ═══════════════════════════════════════════════════════════════════════
 function ConfigPage({ usuario }) {
-  const [sub, setSub] = useState(null); // null | 'relatorios' | 'modelos' | 'parametros'
+  const [sub, setSub] = useState(null);
 
   if (sub === 'relatorios') return <RelatoriosSection usuario={usuario} onBack={() => setSub(null)} />;
   if (sub === 'modelos') return <ModelosImpressosSection onBack={() => setSub(null)} />;

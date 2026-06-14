@@ -1,9 +1,3 @@
-"""Data Transfer Objects for the anamnesis (evaluation) submission flow.
-
-These DTOs decouple the application use case and outbound adapters from the
-HTTP presentation schemas. The HTTP router translates Pydantic schemas into
-these DTOs before calling the use case.
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -18,7 +12,6 @@ class ChecklistItemDTO:
 
 @dataclass(frozen=True)
 class HistoricoFamiliarDTO:
-    """Hereditary findings collected once per evaluation (tb_historico_familiar)."""
 
     deficiencia_intelectual: bool = False
     falencia_ovariana_precoce: bool = False

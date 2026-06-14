@@ -1,4 +1,3 @@
-"""Patient domain entity (subject of FXS evaluation)."""
 from datetime import UTC, date, datetime
 from enum import StrEnum
 
@@ -36,11 +35,6 @@ class Escolaridade(StrEnum):
 
 
 class Patient(BaseModel):
-    """Person registered for FXS evaluation.
-
-    Identity is the integer SERIAL ``id`` from the ``pacientes`` view. It is
-    ``None`` until the repository persists the row and back-fills it.
-    """
 
     model_config = ConfigDict(
         arbitrary_types_allowed=True,
@@ -60,8 +54,6 @@ class Patient(BaseModel):
         description="FK para usuarios.id (SERIAL do banco)",
     )
 
-    # Demographic fields — all optional (the registration form does not
-    # collect place-of-birth/residence; the DB columns are nullable).
     etnia: Etnia | None = None
     telefone: str | None = None
     uf_nascimento: str | None = None

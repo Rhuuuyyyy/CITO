@@ -1,4 +1,3 @@
-"""Outbound adapter: inserts checklist responses into respostas_checklist."""
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -6,7 +5,6 @@ from app.application.dtos.anamnesis import ChecklistItemDTO
 
 
 class ChecklistRepository:
-    """Persists per-symptom answers for one evaluation."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
@@ -17,7 +15,6 @@ class ChecklistRepository:
         avaliacao_id: int,
         respostas: list[ChecklistItemDTO],
     ) -> None:
-        """Bulk-insert all symptom answers for an evaluation."""
         for resposta in respostas:
             await self._session.execute(
                 text(

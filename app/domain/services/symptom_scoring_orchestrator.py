@@ -1,4 +1,3 @@
-"""Delegates score computation to the database function fn_calcular_score_triagem."""
 from dataclasses import dataclass
 from typing import cast
 

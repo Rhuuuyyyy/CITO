@@ -1,4 +1,3 @@
-"""Use cases for editing and deleting a doctor's own appointments."""
 from __future__ import annotations
 
 from datetime import datetime

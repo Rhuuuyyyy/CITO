@@ -36,17 +36,14 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
   return (
     <div className="min-h-screen paper-bg flex" style={{ background: 'var(--paper)' }}>
 
-      {/* ── Painel esquerdo — visual (desktop) ── */}
       <div className="hidden lg:flex flex-col justify-between flex-1 p-14 relative overflow-hidden"
         style={{ background: 'var(--ink)' }}>
 
-        {/* Logo marca d'água */}
         <div className="absolute -bottom-10 -left-10 pointer-events-none select-none"
           style={{ opacity: 0.06, width: 520 }}>
           <img src="assets/cito-tight.png" alt="" className="cito-logo-img on-ink w-full" />
         </div>
 
-        {/* Topo */}
         <div className="relative">
           <img src="assets/cito-tight.png" alt="cito"
             className="cito-logo-img on-ink select-none"
@@ -57,7 +54,6 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
           </div>
         </div>
 
-        {/* Citação */}
         <div className="relative max-w-md">
           <TailFlourish width={56} height={20} color="rgba(255,255,255,0.15)" className="mb-5" />
           <p className="font-display text-[28px] leading-[1.2]" style={{ color: 'var(--on-ink)' }}>
@@ -68,7 +64,6 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
           </p>
         </div>
 
-        {/* Estatísticas */}
         <div className="relative flex gap-10">
           {[
             { val: '300k+',   label: 'Afetados no Brasil' },
@@ -85,15 +80,12 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
         </div>
       </div>
 
-      {/* ── Painel direito — formulário ── */}
       <div className="flex flex-col items-center justify-center w-full lg:w-[480px] lg:flex-shrink-0 px-6 py-12 relative">
 
-        {/* Theme toggle + logo mobile no topo */}
         <div className="absolute top-6 right-6">
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
         </div>
 
-        {/* Logo mobile */}
         <div className="mb-10 lg:hidden flex flex-col items-center gap-2">
           <img src="assets/cito-tight.png" alt="cito"
             className="cito-logo-img select-none"
@@ -106,7 +98,6 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
 
         <div className="w-full max-w-[340px]">
 
-          {/* Badge acesso restrito */}
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-6"
             style={{ border: '1px solid var(--hair)', background: 'var(--surface)' }}>
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--ink)',
@@ -125,7 +116,6 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
             Insira suas credenciais para acessar o painel clínico.
           </p>
 
-          {/* Mensagem de erro */}
           {erro && (
             <div className="flex items-start gap-2.5 px-4 py-3 rounded-2xl mb-5"
               style={{ background: 'var(--rust-soft)', border: '1px solid var(--hair)' }}>
@@ -134,10 +124,8 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
             </div>
           )}
 
-          {/* Formulário */}
           <form onSubmit={handleSubmit} className="space-y-4">
 
-            {/* E-mail */}
             <Field label="E-mail profissional" required>
               <input
                 type="email"
@@ -150,7 +138,6 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
               />
             </Field>
 
-            {/* Senha */}
             <Field label="Senha" required>
               <div className="relative">
                 <input
@@ -174,7 +161,6 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
               </div>
             </Field>
 
-            {/* Esqueceu */}
             <div className="flex justify-end -mt-1">
               <button type="button"
                 className="text-[12px] font-medium lift"
@@ -185,7 +171,6 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
               </button>
             </div>
 
-            {/* Botão entrar */}
             <button
               type="submit"
               disabled={loading}
@@ -210,7 +195,6 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
 
           </form>
 
-          {/* Rodapé */}
           <p className="text-center text-[11.5px] mt-8" style={{ color: 'var(--subtle)' }}>
             Acesso exclusivo para profissionais credenciados.{' '}
             <button className="underline lift"
@@ -221,7 +205,6 @@ function LoginPage({ onLogin, theme, onToggleTheme }) {
             </button>
           </p>
 
-          {/* Logo */}
           <div className="flex justify-center mt-10" style={{ opacity: 0.25 }}>
             <img src="assets/cito-tight.png" alt="cito"
               className="cito-logo-img select-none pointer-events-none"

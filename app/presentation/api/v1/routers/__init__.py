@@ -1,1 +1,0 @@
-"""APIRouter modules grouped by bounded context (auth, anamnesis, patients, ...)."""

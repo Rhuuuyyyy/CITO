@@ -1,8 +1,3 @@
-"""Read/write adapter for the 'usuarios' table (admin user management).
-
-Passwords are hashed by a DB trigger (trg_hash_senha_usuario via bcrypt) — the
-application inserts the plaintext password and never handles bcrypt directly.
-"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -44,13 +39,6 @@ class UserRepository:
         especialidade: str | None,
         senha_plain: str,
     ) -> int:
-        """Insert a new 'medico' user.
-
-        The password is bcrypt-hashed by PostgreSQL's pgcrypto (`crypt` +
-        `gen_salt('bf')`) right in the INSERT — the deployed DB has no hashing
-        trigger, and the Python layer never handles bcrypt itself. Login verifies
-        with the matching `crypt(:senha, senha)`.
-        """
         result = await self._session.execute(
             text(
                 """
@@ -122,7 +110,6 @@ class UserRepository:
         )
 
     async def set_ativo(self, *, user_id: int, ativo: bool) -> bool:
-        """Soft enable/disable a user. Returns True if a row was updated."""
         result = await self._session.execute(
             text("UPDATE usuarios SET ativo = :ativo WHERE id = :id RETURNING id"),
             {"ativo": ativo, "id": user_id},
@@ -130,7 +117,6 @@ class UserRepository:
         return result.first() is not None
 
     async def verify_password(self, *, user_id: int, senha_plain: str) -> bool:
-        """Check a plaintext password against a user's stored bcrypt hash."""
         result = await self._session.execute(
             text(
                 "SELECT 1 FROM usuarios WHERE id = :id AND senha = crypt(:senha, senha)"
@@ -140,9 +126,6 @@ class UserRepository:
         return result.first() is not None
 
     async def delete(self, *, user_id: int) -> None:
-        """Hard-delete a user. Raises IntegrityError if the user is still
-        referenced by clinical/audit records (FK) — the caller maps that to a
-        friendly 409 recommending deactivation instead."""
         await self._session.execute(
             text("DELETE FROM usuarios WHERE id = :id"),
             {"id": user_id},

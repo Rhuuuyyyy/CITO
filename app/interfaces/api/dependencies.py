@@ -1,4 +1,3 @@
-"""FastAPI Depends providers — the single wiring surface for all routers."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,7 +12,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 @dataclass(frozen=True)
 class AuthenticatedDoctor:
-    """Lightweight authenticated identity extracted from a verified JWT."""
 
     usuario_id: int
     sessao_id: int
@@ -23,11 +21,6 @@ class AuthenticatedDoctor:
 async def get_current_doctor(
     token: str = Depends(oauth2_scheme),
 ) -> AuthenticatedDoctor:
-    """Verify the Bearer JWT and return the authenticated doctor's identity.
-
-    Raises HTTP 401 if the token is absent, expired, or invalid.
-    Does NOT hit the database — verification is cryptographic only.
-    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Token inválido ou expirado.",
@@ -54,11 +47,6 @@ async def get_current_doctor(
 async def get_current_admin(
     doctor: AuthenticatedDoctor = Depends(get_current_doctor),
 ) -> AuthenticatedDoctor:
-    """Require an authenticated user with the 'admin' role (HTTP 403 otherwise).
-
-    This is the real access gate for admin-only endpoints — the frontend hiding
-    the menu is only UX.
-    """
     if doctor.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

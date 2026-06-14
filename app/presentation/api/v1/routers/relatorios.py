@@ -1,4 +1,3 @@
-"""HTTP router for clinical reports (Config → Relatórios)."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
@@ -30,10 +29,8 @@ async def list_relatorio_avaliacoes(
     ),
     sexo: str | None = Query(default=None, description="Filtrar por sexo (M ou F)"),
 ) -> list[RelatorioAvaliacaoSchema]:
-    # RBAC: o médico vê apenas os seus pacientes; o admin vê todos e pode,
-    # opcionalmente, filtrar por um médico específico.
     if doctor.role == "admin":
-        restrict_to = medico_id  # None = todos os médicos
+        restrict_to = medico_id
     else:
         restrict_to = doctor.usuario_id
 

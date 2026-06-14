@@ -1,18 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════
-// CITO — Geração do laudo de triagem (PDF) — estilo formulário clínico
-// Módulo compartilhado: a Triagem gera o laudo ao finalizar e a tela de
-// Pacientes reimprime o mesmo laudo de uma triagem já registrada.
-//
-// Layout: documento clínico em preto e branco puro (sem cor), no estilo de
-// um prontuário/formulário do SUS — cabeçalho institucional com logo, campos
-// delimitados por bordas, tabelas para sintomas e histórico, área de
-// assinatura manual ao final.
-//
-// Expõe:
-//   window.gerarLaudoPDF(dados)  — desenha e baixa o PDF (idêntico nos dois fluxos)
-//   window.LAUDO                 — catálogos (sintomas/histórico) p/ mapear dados do backend
-//
-// Encapsulado numa IIFE para não vazar nomes ao escopo global.
+// CITO — Geração do laudo de triagem (PDF)
 // ═══════════════════════════════════════════════════════════════════════
 (function () {
   const SINTOMAS = [
@@ -32,9 +19,6 @@
   const LIMIAR_M = 0.56;
   const LIMIAR_F = 0.55;
 
-  // Parâmetros do modelo científico vigente (parametro_triagem no banco).
-  // Mantidos aqui apenas para rastreabilidade no laudo; a regra de score real
-  // continua no banco (fn_calcular_score_triagem).
   const PARAMS = {
     M: { versao: 'ROMERO_2025_v1_M', auc: 0.73, sens: '95%' },
     F: { versao: 'ROMERO_2025_v1_F', auc: 0.76, sens: '95%' },
@@ -51,7 +35,6 @@
     { id: 'tremor_ataxia_familiar',    label: 'Tremor / ataxia familiar (FXTAS)' },
   ];
 
-  // Mapeia a descrição vinda do backend (tabela sintomas) → id curto do catálogo.
   const SINTOMA_DESCRICAO = {
     deficiencia_intelectual:   'Deficiência intelectual',
     face_alongada_orelhas:     'Face alongada / orelhas salientes',
@@ -67,7 +50,6 @@
     agressividade:             'Agressividade',
   };
 
-  // ── Helpers de formatação ──────────────────────────────────────────────
   function formatarData(str) {
     if (!str) return '—';
     const datePart = String(str).slice(0, 10);
@@ -88,7 +70,7 @@
   function mascararCPF(cpf) {
     if (!cpf) return '—';
     const d = String(cpf).replace(/\D/g, '');
-    if (d.length < 11) return String(cpf); // já mascarado ou incompleto: mostra como veio
+    if (d.length < 11) return String(cpf);
     return `***.***.***-${d.slice(9, 11)}`;
   }
 
@@ -109,20 +91,6 @@
     });
   }
 
-  // ── Geração do PDF ────────────────────────────────────────────────────
-  // dados = {
-  //   nome, sexo ('M'|'F'), dataNasc ('YYYY-MM-DD'),
-  //   cpf,                                  // opcional (mascarado no laudo)
-  //   diagnosticoPrevio,                    // opcional bool
-  //   acomp: { nome, relacao, telefone, email },
-  //   respostas: { [sintomaId]: 1|0 },      // 1 = presente
-  //   historico: { [histId]: bool },
-  //   historicoOutros: string,
-  //   observacoes,                          // opcional string (vazio = caixa em branco)
-  //   dataAvaliacao,                        // opcional 'YYYY-MM-DD' / ISO; default = hoje
-  //   numProntuario,                        // opcional
-  //   scoreOverride: number|null,           // se nulo, calcula a partir das respostas
-  // }
   async function gerarLaudoPDF(dados) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
@@ -150,23 +118,20 @@
       ? 'Encaminhar para teste genético (FMR1)'
       : 'Baixo risco — acompanhamento clínico';
 
-    // ── Geometria da página ──
-    const W = 210, ML = 15, MR = 15, CW = W - ML - MR; // CW = 180
-    const TOP = 15;     // topo do conteúdo após nova página
-    const BOT = 282;    // limite inferior do conteúdo (rodapé fica abaixo)
+    const W = 210, ML = 15, MR = 15, CW = W - ML - MR;
+    const TOP = 15;
+    const BOT = 282;
     let y = TOP;
 
-    // Tons (preto e branco puro — só escala de cinza estrutural)
     const BLACK = [0, 0, 0];
-    const LABEL = [70, 70, 70];   // rótulos de campo (cinza, ainda P&B)
-    const FILL  = [232, 232, 232]; // faixa de seção / cabeçalho de tabela
+    const LABEL = [70, 70, 70];
+    const FILL  = [232, 232, 232];
     const setStroke = () => { doc.setDrawColor(0, 0, 0); doc.setLineWidth(0.3); };
 
     function ensure(h) {
       if (y + h > BOT) { doc.addPage(); y = TOP; }
     }
 
-    // Caixa de seleção quadrada; marcada = X em diagonal.
     function checkbox(x, ytop, marked) {
       const s = 3.2;
       doc.setDrawColor(0, 0, 0);
@@ -180,7 +145,6 @@
       }
     }
 
-    // Faixa de título de seção (fundo cinza, borda preta).
     function sectionLabel(titulo, minNext) {
       ensure(6.5 + (minNext != null ? minNext : 12));
       doc.setFillColor(...FILL);
@@ -193,7 +157,6 @@
       y += 6.5;
     }
 
-    // Linha de campos delimitados: cells = [[label, valor], ...]
     function fieldRow(cells, rowH) {
       rowH = rowH || 11;
       ensure(rowH);
@@ -218,7 +181,7 @@
     }
 
     // ════════════════════════════════════════════════════════════════════
-    // CABEÇALHO INSTITUCIONAL (página 1)
+    // CABEÇALHO INSTITUCIONAL
     // ════════════════════════════════════════════════════════════════════
     const hH = 26;
     const logoW = 30, rightW = 52;
@@ -229,7 +192,6 @@
     doc.line(ML + logoW, y, ML + logoW, y + hH);
     doc.line(ML + CW - rightW, y, ML + CW - rightW, y + hH);
 
-    // Logo (cito-tight.png — silhueta preta). Encaixa preservando proporção.
     try {
       const logo = await carregarImagem('assets/cito-tight.png');
       const cellW = logoW - 8, cellH = 12;
@@ -246,7 +208,6 @@
       doc.text('cito', ML + logoW / 2, y + hH / 2 + 2, { align: 'center' });
     }
 
-    // Bloco central (identidade)
     const cxL = ML + logoW + 4;
     doc.setTextColor(...BLACK);
     doc.setFont('helvetica', 'bold');
@@ -266,7 +227,6 @@
       cxL, y + 23
     );
 
-    // Bloco direito (identificação do documento)
     const rxL = ML + CW - rightW + 3;
     doc.setTextColor(...BLACK);
     doc.setFont('helvetica', 'bold');
@@ -320,7 +280,7 @@
     ]);
 
     // ════════════════════════════════════════════════════════════════════
-    // RESULTADO DA TRIAGEM (tabela numérica + conduta)
+    // RESULTADO DA TRIAGEM
     // ════════════════════════════════════════════════════════════════════
     y += 2;
     sectionLabel('Resultado da triagem', 36);
@@ -335,7 +295,6 @@
       ['Sensibilidade', param.sens],
     ]);
 
-    // Conduta recomendada — duas opções com checkbox (a marcada reflete o score)
     ensure(14);
     setStroke();
     doc.rect(ML, y, CW, 14, 'S');
@@ -354,10 +313,10 @@
     y += 14;
 
     // ════════════════════════════════════════════════════════════════════
-    // SINTOMAS AVALIADOS (tabela)
+    // SINTOMAS AVALIADOS
     // ════════════════════════════════════════════════════════════════════
     y += 2;
-    const c1 = 112, c2 = 23, c3 = 45; // Sintoma | Peso | Resultado
+    const c1 = 112, c2 = 23, c3 = 45;
     function sintomasHeader() {
       const hh = 6.5;
       doc.setFillColor(...FILL);
@@ -397,7 +356,7 @@
     });
 
     // ════════════════════════════════════════════════════════════════════
-    // HISTÓRICO FAMILIAR (sempre visível, todos os achados)
+    // HISTÓRICO FAMILIAR
     // ════════════════════════════════════════════════════════════════════
     y += 2;
     sectionLabel('Histórico familiar', 7 + 7 + 10);
@@ -421,7 +380,6 @@
       }
       y += hrh;
     }
-    // Outros achados familiares (texto livre)
     ensure(11);
     setStroke();
     doc.rect(ML, y, CW, 11, 'S');
@@ -436,7 +394,7 @@
     y += 11;
 
     // ════════════════════════════════════════════════════════════════════
-    // OBSERVAÇÕES CLÍNICAS (caixa; vazia se não preenchida)
+    // OBSERVAÇÕES CLÍNICAS
     // ════════════════════════════════════════════════════════════════════
     y += 2;
     sectionLabel('Observações clínicas', 22);
@@ -454,7 +412,7 @@
     y += obsH;
 
     // ════════════════════════════════════════════════════════════════════
-    // RESPONSÁVEL PELA TRIAGEM (preenchimento / assinatura manual)
+    // RESPONSÁVEL PELA TRIAGEM
     // ════════════════════════════════════════════════════════════════════
     y += 2;
     sectionLabel('Responsável pela triagem', 32);
@@ -468,7 +426,6 @@
     doc.text('Médico(a): ______________________________________________', ML + 6, y + 9);
     doc.text('CRM: ___________________', ML + 6, y + 15.5);
     doc.text('Data: ______/______/__________', ML + CW - 6, y + 9, { align: 'right' });
-    // Linha de assinatura centralizada
     const cx = ML + CW / 2;
     const lineY = y + sigH - 8;
     doc.setLineWidth(0.4);
@@ -480,7 +437,7 @@
     y += sigH;
 
     // ════════════════════════════════════════════════════════════════════
-    // RODAPÉ (todas as páginas)
+    // RODAPÉ
     // ════════════════════════════════════════════════════════════════════
     const totalPages = doc.getNumberOfPages();
     for (let pg = 1; pg <= totalPages; pg++) {

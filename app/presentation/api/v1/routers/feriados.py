@@ -1,4 +1,3 @@
-"""HTTP router for the national holidays calendar overlay."""
 from __future__ import annotations
 
 from datetime import date

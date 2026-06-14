@@ -1,4 +1,3 @@
-"""Request/response Pydantic schemas for patient-related endpoints."""
 from __future__ import annotations
 
 from datetime import date
@@ -7,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class AcompanhanteCreateRequest(BaseModel):
-    """Caregiver/guardian data. Only name and relationship are required."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -22,7 +20,6 @@ class AcompanhanteCreateRequest(BaseModel):
 
 
 class PatientCreateRequest(BaseModel):
-    """Payload for registering a new patient."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -45,12 +42,6 @@ class PatientCreateRequest(BaseModel):
 
 
 class PatientUpdateRequest(BaseModel):
-    """Payload for editing an existing patient's data.
-
-    ``cpf`` is optional: when omitted/None the stored CPF hash is kept unchanged
-    (the detail view only exposes a masked placeholder, so the UI can't pre-fill
-    the real digits). All other fields overwrite the current values.
-    """
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
@@ -72,7 +63,6 @@ class PatientUpdateRequest(BaseModel):
 
 
 class PatientResponse(BaseModel):
-    """LGPD-aware response: PII is masked."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -85,7 +75,6 @@ class PatientResponse(BaseModel):
 
 
 class PatientListItemSchema(BaseModel):
-    """One patient row for the list view. PII masked; clinical summary included."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -110,7 +99,6 @@ class PatientListItemSchema(BaseModel):
 
 
 class PatientSetAtivoRequest(BaseModel):
-    """Arquivar (ativo=FALSE) ou reativar (ativo=TRUE) um paciente."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -118,7 +106,6 @@ class PatientSetAtivoRequest(BaseModel):
 
 
 class PatientDeleteRequest(BaseModel):
-    """Exclusão definitiva (cascata), confirmada com a senha do médico."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -135,7 +122,6 @@ class PatientListResponse(BaseModel):
 
 
 class AcompanhanteDetailSchema(BaseModel):
-    """Caregiver linked to a patient. Name in clear for the owning doctor."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -147,7 +133,6 @@ class AcompanhanteDetailSchema(BaseModel):
 
 
 class PatientDetailResponse(BaseModel):
-    """Full patient record for the detail view. Nome em claro (médico dono); CPF mascarado."""
 
     model_config = ConfigDict(extra="forbid")
 

@@ -1,10 +1,8 @@
-"""Outbound adapter: persists referrals into tb_encaminhamentos."""
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class EncaminhamentoRepository:
-    """Creates referrals generated from an evaluation (no PII)."""
 
     def __init__(self, session: AsyncSession) -> None:
         self._session = session

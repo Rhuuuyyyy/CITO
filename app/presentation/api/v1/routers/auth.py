@@ -1,4 +1,3 @@
-"""HTTP router for authentication endpoints."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -23,7 +22,6 @@ async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
     session: AsyncSession = Depends(get_db_session),
 ) -> TokenLoginResponse:
-    """Authenticate a doctor and open a session."""
     auth_service = AuthService(session)
     ip_origem = request.client.host if request.client else "unknown"
     user_agent = request.headers.get("user-agent", "unknown")
@@ -58,7 +56,6 @@ async def login(
         sucesso=sucesso,
         usuario_id=usuario_id,
         sessao_id=sessao_id,
-        # 'senha_incorreta' é um valor aceito pelo CHECK de motivo_falha.
         motivo_falha=None if sucesso else "senha_incorreta",
     )
 
@@ -69,8 +66,6 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # O papel no token reflete o tipo real do banco: admin → 'admin',
-    # médico → 'doctor' (compatível com get_current_doctor).
     role = "admin" if tipo == "admin" else "doctor"
     access_token = issue_access_token(
         usuario_id=usuario_id,
@@ -99,7 +94,6 @@ async def logout(
     sessao_id: int,
     session: AsyncSession = Depends(get_db_session),
 ) -> None:
-    """Close an active session in tb_log_sessoes."""
     auth_service = AuthService(session)
     await auth_service.close_session(
         sessao_id=sessao_id,

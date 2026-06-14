@@ -1,4 +1,3 @@
-"""HTTP router for admin user management. All endpoints are admin-only."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, status

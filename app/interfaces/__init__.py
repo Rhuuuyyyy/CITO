@@ -1,1 +1,0 @@
-"""Infrastructure layer — concrete adapters for outbound ports (DB, auth, audit, ...)."""

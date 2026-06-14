@@ -1,12 +1,3 @@
-"""RegisterPatientUseCase — create a patient record and optional caregiver.
-
-Flow:
-  1. (If acompanhante provided) Check if exists by CPF -> create if not
-  2. Create patient record with criado_por_db_id = authenticated doctor's DB id
-  3. Return the created Patient entity
-
-HTTP-blind: raises domain/ValueError exceptions, never HTTPException.
-"""
 from __future__ import annotations
 
 from app.domain.entities.acompanhante import Acompanhante
@@ -18,11 +9,6 @@ from app.presentation.api.v1.schemas.patient import PatientCreateRequest
 
 
 class RegisterPatientUseCase:
-    """Creates a patient, optionally with a caregiver.
-
-    HTTP-blind: raises domain exceptions, never HTTPException.
-    The router translates PatientCreateRequest -> calls execute() -> formats response.
-    """
 
     def __init__(
         self,
@@ -38,16 +24,6 @@ class RegisterPatientUseCase:
         request: PatientCreateRequest,
         usuario_db_id: int,
     ) -> Patient:
-        """Register a new patient.
-
-        Args:
-            request: Validated HTTP payload (already schema-validated by Pydantic).
-            usuario_db_id: The integer PK of the authenticated doctor from the JWT.
-
-        Returns:
-            The newly created Patient domain entity.
-        """
-        # Step 1 — Resolve acompanhante (create or retrieve)
         acompanhante_id = None
         if request.acompanhante is not None:
             acomp_cpf = CPF(request.acompanhante.cpf) if request.acompanhante.cpf else None
@@ -68,13 +44,10 @@ class RegisterPatientUseCase:
             else:
                 acompanhante_id = existing.id
 
-        # The caregiver's relationship to the patient (e.g. "Mãe") is sent inside
-        # the acompanhante block and stored on the patient as grau_parentesco.
         grau_parentesco = (
             request.acompanhante.relacao if request.acompanhante is not None else None
         )
 
-        # Step 2 — Build and persist the Patient entity
         patient_cpf = CPF(request.cpf) if request.cpf else None
 
         patient = Patient(

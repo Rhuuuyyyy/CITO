@@ -1,4 +1,3 @@
-"""HTTP router for clinical evaluation (anamnesis) endpoints."""
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -38,7 +37,6 @@ router = APIRouter(prefix="/avaliacoes", tags=["Anamnese Clínica"])
 
 
 def _build_use_case(session: AsyncSession) -> SubmitAnamnesisUseCase:
-    """Factory that wires the use case with its concrete dependencies."""
     return SubmitAnamnesisUseCase(
         avaliacoes=AvaliacaoRepository(session),
         checklist=ChecklistRepository(session),
@@ -50,7 +48,6 @@ def _build_use_case(session: AsyncSession) -> SubmitAnamnesisUseCase:
 
 
 def _to_dto(payload: SubmitAnamnesisRequest) -> SubmitAnamnesisDTO:
-    """Translate the HTTP schema into the application DTO."""
     h = payload.historico_familiar
     return SubmitAnamnesisDTO(
         paciente_id=payload.paciente_id,
@@ -92,7 +89,6 @@ async def submit_anamnesis(
     doctor: AuthenticatedDoctor = Depends(get_current_doctor),
     session: AsyncSession = Depends(get_db_session),
 ) -> AvaliacaoResponse:
-    """Submit a clinical checklist and trigger score computation."""
     use_case = _build_use_case(session)
     dto = _to_dto(payload)
 

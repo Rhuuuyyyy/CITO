@@ -1,4 +1,3 @@
-"""Response schema for the symptom catalog endpoint."""
 from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict

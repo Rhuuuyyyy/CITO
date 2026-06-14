@@ -1,4 +1,3 @@
-"""GetAcompanhantesUseCase — list registered caregivers for selection."""
 from __future__ import annotations
 
 from app.interfaces.repositories.acompanhante_repository import (

@@ -1,8 +1,3 @@
-"""FastAPI application factory and ASGI entry point.
-
-This is the composition root of the hexagonal architecture.
-It is the ONLY file allowed to import from every other layer.
-"""
 from __future__ import annotations
 
 import os
@@ -45,7 +40,6 @@ from app.presentation.api.v1.routers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    """Open long-lived resources on startup, close them on shutdown."""
     yield
     await engine.dispose()
 
@@ -67,7 +61,6 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # ── Middlewares ────────────────────────────────────────────────────────────
     if settings.cors_origins:
         app.add_middleware(
             CORSMiddleware,
@@ -77,7 +70,6 @@ def create_app() -> FastAPI:
             allow_headers=["*"],
         )
 
-    # ── Exception handlers (RFC 7807 Problem Details) ─────────────────────────
     @app.exception_handler(NotFoundError)
     async def _not_found(request: Request, exc: Exception) -> JSONResponse:
         return JSONResponse(
@@ -155,7 +147,6 @@ def create_app() -> FastAPI:
             },
         )
 
-    # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(anamnesis.router, prefix=settings.api_prefix)
     app.include_router(auth.router, prefix=settings.api_prefix)
     app.include_router(patients.router, prefix=settings.api_prefix)
@@ -167,8 +158,6 @@ def create_app() -> FastAPI:
     app.include_router(users.router, prefix=settings.api_prefix)
     app.include_router(feriados.router, prefix=settings.api_prefix)
 
-    # ── Health probe (outside api_prefix for infra / k8s) ────────────────────
-    # ── Health probe (Detetive) ────────────────────
     @app.get("/health", tags=["Meta"])
     async def health() -> dict:
         root_dir = Path(__file__).resolve().parent.parent
@@ -181,23 +170,21 @@ def create_app() -> FastAPI:
             "root_contents": os.listdir(root_dir)
         }
 
-    # ── Frontend (Adicionado para o Azure) ────────────────────────────────────
-    # Calcula o caminho para a pasta frontend (app/main.py -> app/ -> raiz -> frontend/)
     FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
+    no_cache = {"Cache-Control": "no-cache"}
+
     if FRONTEND_DIR.is_dir():
-        # 1. Rota raiz devolve o index.html
         @app.get("/")
         async def serve_index():
-            return FileResponse(FRONTEND_DIR / "index.html")
+            return FileResponse(FRONTEND_DIR / "index.html", headers=no_cache)
 
-        # 2. Catch-all: entrega o ficheiro real (css/js) ou o index (para rotas do React)
         @app.get("/{full_path:path}")
         async def catch_all(full_path: str):
             file_path = FRONTEND_DIR / full_path
             if file_path.is_file():
-                return FileResponse(file_path)
-            return FileResponse(FRONTEND_DIR / "index.html")
+                return FileResponse(file_path, headers=no_cache)
+            return FileResponse(FRONTEND_DIR / "index.html", headers=no_cache)
         
     return app
 

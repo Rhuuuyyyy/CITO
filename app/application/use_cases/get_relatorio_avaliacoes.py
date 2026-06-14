@@ -1,4 +1,3 @@
-"""GetRelatorioAvaliacoesUseCase — finalised evaluations for the reports view."""
 from __future__ import annotations
 
 from app.interfaces.repositories.relatorio_repository import (

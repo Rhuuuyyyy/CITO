@@ -1,4 +1,3 @@
-"""Persistence port for the Patient aggregate."""
 from typing import Protocol
 from uuid import UUID
 
@@ -6,7 +5,6 @@ from app.domain.entities.patient import Patient
 
 
 class IPatientRepository(Protocol):
-    """Contract every concrete Patient persistence adapter must satisfy."""
 
     async def get(self, patient_id: UUID) -> Patient | None: ...
 

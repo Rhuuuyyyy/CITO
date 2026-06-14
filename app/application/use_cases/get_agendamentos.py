@@ -1,4 +1,3 @@
-"""GetAgendamentosUseCase — list active appointments for the authenticated doctor."""
 from __future__ import annotations
 
 from app.interfaces.repositories.agendamento_repository import (

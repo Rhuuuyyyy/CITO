@@ -1,4 +1,3 @@
-"""Use cases for admin user management (create / list / activate médicos)."""
 from __future__ import annotations
 
 from sqlalchemy.exc import IntegrityError
@@ -8,7 +7,6 @@ from app.interfaces.repositories.user_repository import UserListItem, UserReposi
 
 
 class CreateMedicoUseCase:
-    """Creates a new 'medico' user. Admin-only (enforced at the router)."""
 
     def __init__(self, users: UserRepository) -> None:
         self._users = users
@@ -55,7 +53,6 @@ class ListUsersUseCase:
 
 
 class SetUserAtivoUseCase:
-    """Enable/disable a user (soft delete). Admin cannot disable themselves."""
 
     def __init__(self, users: UserRepository) -> None:
         self._users = users
@@ -82,13 +79,6 @@ class SetUserAtivoUseCase:
 
 
 class DeleteUserUseCase:
-    """Hard-delete a user, confirmed with the admin's own password.
-
-    Reads (password check, existence) run BEFORE the DELETE so that, if the
-    DELETE hits a foreign-key reference (the user has clinical/audit records),
-    we can surface a clean error without issuing further queries on the now-
-    aborted transaction.
-    """
 
     def __init__(self, users: UserRepository) -> None:
         self._users = users
@@ -103,7 +93,6 @@ class DeleteUserUseCase:
         if user_id == requesting_admin_id:
             raise DomainError("Você não pode excluir a própria conta.")
 
-        # Senha errada NÃO pode virar 401 (o frontend desloga em 401). Usa 422.
         if not await self._users.verify_password(
             user_id=requesting_admin_id, senha_plain=senha_admin
         ):

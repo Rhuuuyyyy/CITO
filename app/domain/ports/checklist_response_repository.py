@@ -1,4 +1,3 @@
-"""Persistence port for the ChecklistResponse aggregate."""
 from typing import Protocol
 from uuid import UUID
 
@@ -6,7 +5,6 @@ from app.domain.entities.checklist_response import ChecklistResponse
 
 
 class IChecklistResponseRepository(Protocol):
-    """Contract every concrete ChecklistResponse persistence adapter must satisfy."""
 
     async def get(self, response_id: UUID) -> ChecklistResponse | None: ...
 

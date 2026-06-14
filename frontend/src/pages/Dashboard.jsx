@@ -1,8 +1,6 @@
 // ═══════════════════════════════════════════════════════════════════════
-// DASHBOARD — mobile-first, hover interativo, modal reagendar funcional
+// DASHBOARD
 // ═══════════════════════════════════════════════════════════════════════
-
-// ── Modal de reagendamento ───────────────────────────────────────────
 function ModalReagendar({ appt, onClose, onSaved }) {
   const [data, setData]   = useState('');
   const [hora, setHora]   = useState('');
@@ -42,12 +40,10 @@ function ModalReagendar({ appt, onClose, onSaved }) {
       <div className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl anim-fade-up card-shadow"
         style={{ background: 'var(--surface)', border: '1px solid var(--hair)' }}>
 
-        {/* Handle mobile */}
         <div className="flex justify-center pt-3 pb-1 sm:hidden">
           <div className="w-10 h-1 rounded-full" style={{ background: 'var(--hair)' }} />
         </div>
 
-        {/* Header */}
         <div className="flex items-start justify-between px-6 pt-5 pb-4"
           style={{ borderBottom: '1px solid var(--hair-soft)' }}>
           <div>
@@ -65,7 +61,6 @@ function ModalReagendar({ appt, onClose, onSaved }) {
           </button>
         </div>
 
-        {/* Corpo */}
         <div className="px-6 py-5 space-y-4">
           {ok ? (
             <div className="flex flex-col items-center py-6 gap-3">
@@ -80,7 +75,6 @@ function ModalReagendar({ appt, onClose, onSaved }) {
             </div>
           ) : (
             <>
-              {/* Data atual */}
               <div className="flex items-center justify-between px-4 py-3 rounded-2xl"
                 style={{ background: 'var(--paper-2)', border: '1px solid var(--hair-soft)' }}>
                 <span className="text-[12.5px]" style={{ color: 'var(--muted)' }}>Data atual</span>
@@ -123,7 +117,6 @@ function ModalReagendar({ appt, onClose, onSaved }) {
           )}
         </div>
 
-        {/* Footer */}
         {!ok && (
           <div className="px-6 py-4" style={{ borderTop: '1px solid var(--hair-soft)' }}>
             {erro && <p className="text-[12.5px] mb-3" style={{ color: 'var(--rust)' }}>{erro}</p>}
@@ -140,7 +133,6 @@ function ModalReagendar({ appt, onClose, onSaved }) {
   );
 }
 
-// ── Card de stat com hover ───────────────────────────────────────────
 function StatCard({ label, value, detail, sub }) {
   const [hovered, setHovered] = useState(false);
 
@@ -161,7 +153,6 @@ function StatCard({ label, value, detail, sub }) {
         minHeight: 148,
       }}>
 
-      {/* Estado padrão */}
       <div className="absolute inset-0 p-5 flex flex-col justify-between" style={{
         opacity: hovered ? 0 : 1,
         transform: hovered ? 'translateY(-8px)' : 'translateY(0)',
@@ -177,7 +168,6 @@ function StatCard({ label, value, detail, sub }) {
         </div>
       </div>
 
-      {/* Estado hover — mostra breakdown em vez de repetir o valor */}
       <div className="absolute inset-0 p-5 flex flex-col justify-between" style={{
         opacity: hovered ? 1 : 0,
         transform: hovered ? 'translateY(0)' : 'translateY(8px)',
@@ -199,7 +189,6 @@ function StatCard({ label, value, detail, sub }) {
   );
 }
 
-// ── Linha da agenda com hover + reagendar ────────────────────────────
 function AgendaRow({ appt, onNav, isLast, onReagendar, onProntuario }) {
   const [hovered, setHovered] = useState(false);
 
@@ -244,7 +233,6 @@ function AgendaRow({ appt, onNav, isLast, onReagendar, onProntuario }) {
         </div>
       </div>
 
-      {/* Ações reveladas no hover */}
       <div className="flex gap-2 overflow-hidden mt-0"
         style={{
           maxHeight: hovered ? '52px' : '0px',
@@ -336,7 +324,6 @@ function DashboardPage({ onNav }) {
     carregar();
   }, []);
 
-  // Agenda real do dia (mesmo endpoint da página Agenda; escopo = médico do JWT).
   function carregarAgenda() {
     const STATUS = {
       confirmado:     ['sage',    'Confirmado'],
@@ -360,14 +347,12 @@ function DashboardPage({ onNav }) {
           .map((a) => {
             const [tone, label] = STATUS[a.status] || ['neutral', a.status];
             return {
-              // campos de exibição
               time: a._d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
               name: a.titulo,
               type: a.tipo || '—',
               age: '',
               status: tone,
               statusLabel: label,
-              // campos crus (para ações reais)
               id: a.id,
               paciente_id: a.paciente_id != null ? a.paciente_id : null,
               titulo: a.titulo,
@@ -387,7 +372,6 @@ function DashboardPage({ onNav }) {
   return (
     <div className="anim-fade-in space-y-5">
 
-      {/* ── HERO ── */}
       <Card className="p-6 sm:p-8 relative overflow-hidden" style={{ background: 'var(--ink)' }}>
         <div className="absolute -bottom-6 -right-4 pointer-events-none select-none"
           style={{ opacity: 0.07, width: 260 }}>
@@ -428,12 +412,10 @@ function DashboardPage({ onNav }) {
         </div>
       </Card>
 
-      {/* ── STAT CARDS ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {stats.map((s, i) => <StatCard key={i} {...s} />)}
       </div>
 
-      {/* ── AGENDA ── */}
       <Card className="overflow-hidden">
         <div className="px-5 py-4 flex items-center justify-between flex-wrap gap-3"
           style={{ borderBottom: '1px solid var(--hair-soft)' }}>
@@ -482,7 +464,6 @@ function DashboardPage({ onNav }) {
         </div>
       </Card>
 
-      {/* ── MODAL REAGENDAR ── */}
       {modalReagendar && (
         <ModalReagendar
           appt={modalReagendar}

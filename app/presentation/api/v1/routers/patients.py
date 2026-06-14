@@ -1,4 +1,3 @@
-"""HTTP router for patient registration and listing."""
 from __future__ import annotations
 
 import base64
@@ -35,7 +34,6 @@ from app.presentation.api.v1.schemas.patient import (
     PatientUpdateRequest,
 )
 
-# Diretório de uploads: <projeto>/frontend/assets/uploads/
 _UPLOAD_DIR = Path(__file__).resolve().parents[5] / "frontend" / "assets" / "uploads"
 
 
@@ -261,7 +259,6 @@ async def delete_patient(
         senha=payload.senha,
         is_admin=(doctor.role == "admin"),
     )
-    # Remove a foto do paciente se existir
     foto_path = _UPLOAD_DIR / f"paciente_{paciente_id}.jpg"
     if foto_path.exists():
         foto_path.unlink()

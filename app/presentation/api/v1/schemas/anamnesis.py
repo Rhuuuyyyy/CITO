@@ -1,4 +1,3 @@
-"""Request/response Pydantic schemas for the anamnesis (evaluation) endpoints."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -7,7 +6,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class RespostaSintomaSchema(BaseModel):
-    """One symptom answer in the checklist."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -21,7 +19,6 @@ class RespostaSintomaSchema(BaseModel):
 
 
 class HistoricoFamiliarSchema(BaseModel):
-    """Hereditary findings for the patient's family (tb_historico_familiar)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -37,7 +34,6 @@ class HistoricoFamiliarSchema(BaseModel):
 
 
 class SubmitAnamnesisRequest(BaseModel):
-    """Payload enviado pelo frontend para submeter um checklist clínico."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -73,7 +69,6 @@ class SubmitAnamnesisRequest(BaseModel):
 
 
 class AvaliacaoResponse(BaseModel):
-    """Retorno após submissão e cálculo de score de uma avaliação."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -91,7 +86,6 @@ class AvaliacaoResponse(BaseModel):
 
 
 class SintomaRespostaDetalheSchema(BaseModel):
-    """One answered symptom of a past evaluation (for reprinting the laudo)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -100,10 +94,6 @@ class SintomaRespostaDetalheSchema(BaseModel):
 
 
 class AvaliacaoDetalheResponse(BaseModel):
-    """Full evaluation used to reprint the screening laudo (PDF).
-
-    Nome do paciente/acompanhante em claro (médico dono); sem CPF.
-    """
 
     model_config = ConfigDict(extra="forbid")
 

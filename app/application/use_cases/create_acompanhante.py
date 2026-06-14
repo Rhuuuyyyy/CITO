@@ -1,9 +1,3 @@
-"""CreateAcompanhanteUseCase — register a standalone caregiver.
-
-Lets the triagem (and patient flow) add a caregiver that doesn't exist yet,
-so it can then be linked to an evaluation (model B). If a CPF is given and
-already matches an existing caregiver, that one is reused (no duplicates).
-"""
 from __future__ import annotations
 
 from app.core.exceptions import DomainError

@@ -1,7 +1,7 @@
 const { useState, useEffect, useMemo, useRef, useCallback } = React;
 
 // ═══════════════════════════════════════════════════════════════════════
-// ICONS — thin, fluid stroke matching feline elegance
+// ICONS
 // ═══════════════════════════════════════════════════════════════════════
 const Icon = {
   grid: (

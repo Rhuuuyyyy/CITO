@@ -1,4 +1,3 @@
-"""ChecklistResponse domain entity (anamnesis form belonging to one Evaluation)."""
 from datetime import UTC, datetime
 from uuid import UUID, uuid4
 
@@ -8,11 +7,6 @@ from app.domain.entities.evaluation import ScoreBand
 
 
 class ChecklistItem(BaseModel):
-    """One answered item inside a ChecklistResponse.
-
-    Carries a reference to the Symptom (by id, never embedded), the
-    boolean answer, and free-text notes the doctor may add.
-    """
 
     model_config = ConfigDict(
         extra="forbid",
@@ -25,12 +19,6 @@ class ChecklistItem(BaseModel):
 
 
 class ChecklistResponse(BaseModel):
-    """Anamnesis form filled in during an Evaluation.
-
-    Holds the per-symptom answers and the computed total score. The actual
-    score computation belongs to a future domain service so that the
-    entity stays pure data + invariants.
-    """
 
     model_config = ConfigDict(
         extra="forbid",
