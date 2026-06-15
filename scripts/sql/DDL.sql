@@ -1,40 +1,9 @@
--- ============================================================================
--- CITO — Script DDL completo (criar o banco do zero)
--- ============================================================================
--- Banco: PostgreSQL 17 (Supabase). Schema: public.
---
--- Recria toda a estrutura: extensões, tabelas, índices, views, funções,
--- gatilhos, view materializada, RLS e dados-semente (12 sintomas, parâmetros
--- de triagem e um usuário administrador inicial).
---
--- Ordem das seções respeita as dependências (tabelas -> funções -> views ->
--- gatilhos -> matview -> RLS -> seed). O script é idempotente: pode ser
--- executado mais de uma vez sem erro (IF NOT EXISTS / CREATE OR REPLACE /
--- ON CONFLICT DO NOTHING).
---
--- Observação sobre criptografia: os nomes de pacientes/acompanhantes são
--- cifrados com PGP simétrico usando a chave injetada na sessão em
--- 'app.pgp_key'. A aplicação faz isso automaticamente; para testar manualmente:
---     SELECT set_config('app.pgp_key', 'SUA_CHAVE', false);
--- ============================================================================
-
--- ----------------------------------------------------------------------------
--- 0. Extensões
--- ----------------------------------------------------------------------------
--- No Supabase as extensões ficam no schema "extensions". O search_path abaixo
--- garante que pgp_sym_encrypt/decrypt e crypt/gen_salt sejam resolvidos sem
--- qualificação ao longo de todo o script (e também em Postgres puro).
 CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE EXTENSION IF NOT EXISTS pgcrypto WITH SCHEMA extensions;
 CREATE EXTENSION IF NOT EXISTS pg_trgm  WITH SCHEMA extensions;
 
 SET search_path TO public, extensions;
 
--- ----------------------------------------------------------------------------
--- 1. Tabelas
--- ----------------------------------------------------------------------------
-
--- 1.1 usuarios (profissionais de saúde / administradores)
 CREATE TABLE IF NOT EXISTS usuarios (
     id              SERIAL      PRIMARY KEY,
     nome            VARCHAR     NOT NULL,
@@ -49,7 +18,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
     atualizado_em   TIMESTAMP   NOT NULL DEFAULT now()
 );
 
--- 1.2 tb_acompanhantes (responsável/familiar do paciente)
 CREATE TABLE IF NOT EXISTS tb_acompanhantes (
     id                  SERIAL      PRIMARY KEY,
     nome_criptografado  BYTEA       NOT NULL,
@@ -60,7 +28,6 @@ CREATE TABLE IF NOT EXISTS tb_acompanhantes (
     atualizado_em       TIMESTAMP   NOT NULL DEFAULT now()
 );
 
--- 1.3 tb_pacientes (indivíduo submetido à triagem)
 CREATE TABLE IF NOT EXISTS tb_pacientes (
     id                          SERIAL      PRIMARY KEY,
     nome_criptografado          BYTEA       NOT NULL,
@@ -100,7 +67,6 @@ CREATE INDEX IF NOT EXISTS idx_pacientes_cpf_hash      ON tb_pacientes (cpf_hash
 CREATE INDEX IF NOT EXISTS idx_pacientes_acompanhante  ON tb_pacientes (acompanhante_id);
 CREATE INDEX IF NOT EXISTS idx_pacientes_criado_por    ON tb_pacientes (criado_por);
 
--- 1.4 tb_avaliacoes (uma triagem aplicada a um paciente)
 CREATE TABLE IF NOT EXISTS tb_avaliacoes (
     id                      SERIAL      PRIMARY KEY,
     paciente_id             INTEGER     NOT NULL REFERENCES tb_pacientes(id),
@@ -120,7 +86,6 @@ CREATE TABLE IF NOT EXISTS tb_avaliacoes (
 CREATE INDEX IF NOT EXISTS idx_avaliacoes_paciente ON tb_avaliacoes (paciente_id);
 CREATE INDEX IF NOT EXISTS idx_avaliacoes_usuario  ON tb_avaliacoes (usuario_id);
 
--- 1.5 sintomas (checklist clínico)
 CREATE TABLE IF NOT EXISTS sintomas (
     id                  SERIAL      PRIMARY KEY,
     descricao           VARCHAR     NOT NULL,
@@ -131,7 +96,6 @@ CREATE TABLE IF NOT EXISTS sintomas (
     ativo               BOOLEAN     NOT NULL DEFAULT true
 );
 
--- 1.6 respostas_checklist (N:M entre avaliações e sintomas)
 CREATE TABLE IF NOT EXISTS respostas_checklist (
     avaliacao_id    INTEGER     NOT NULL REFERENCES tb_avaliacoes(id),
     sintoma_id      INTEGER     NOT NULL REFERENCES sintomas(id),
@@ -142,7 +106,6 @@ CREATE TABLE IF NOT EXISTS respostas_checklist (
 
 CREATE INDEX IF NOT EXISTS idx_respostas_sintoma ON respostas_checklist (sintoma_id);
 
--- 1.7 parametro_triagem (limiares/AUC por sexo)
 CREATE TABLE IF NOT EXISTS parametro_triagem (
     id              SERIAL      PRIMARY KEY,
     sexo            CHAR(1)     NOT NULL CHECK (sexo IN ('M', 'F')),
@@ -155,12 +118,10 @@ CREATE TABLE IF NOT EXISTS parametro_triagem (
     criado_em       TIMESTAMP   NOT NULL DEFAULT now()
 );
 
--- No máximo um parâmetro ativo por sexo
 CREATE UNIQUE INDEX IF NOT EXISTS uq_parametro_ativo_por_sexo
     ON parametro_triagem (sexo)
     WHERE ativo;
 
--- 1.8 tb_historico_familiar (1:1 com avaliação)
 CREATE TABLE IF NOT EXISTS tb_historico_familiar (
     id                          SERIAL      PRIMARY KEY,
     avaliacao_id                INTEGER     NOT NULL UNIQUE REFERENCES tb_avaliacoes(id),
@@ -176,7 +137,6 @@ CREATE TABLE IF NOT EXISTS tb_historico_familiar (
     criado_em                   TIMESTAMP   NOT NULL DEFAULT now()
 );
 
--- 1.9 tb_encaminhamentos
 CREATE TABLE IF NOT EXISTS tb_encaminhamentos (
     id                      SERIAL      PRIMARY KEY,
     avaliacao_id            INTEGER     NOT NULL REFERENCES tb_avaliacoes(id),
@@ -192,7 +152,6 @@ CREATE TABLE IF NOT EXISTS tb_encaminhamentos (
 
 CREATE INDEX IF NOT EXISTS idx_encaminhamentos_aval ON tb_encaminhamentos (avaliacao_id);
 
--- 1.10 tb_agendamentos
 CREATE TABLE IF NOT EXISTS tb_agendamentos (
     id          SERIAL      PRIMARY KEY,
     paciente_id INTEGER     REFERENCES tb_pacientes(id),
@@ -208,7 +167,6 @@ CREATE TABLE IF NOT EXISTS tb_agendamentos (
     criado_em   TIMESTAMP   NOT NULL DEFAULT now()
 );
 
--- 1.11 tb_log_sessoes (duracao_segundos é coluna GERADA)
 CREATE TABLE IF NOT EXISTS tb_log_sessoes (
     id                  BIGSERIAL   PRIMARY KEY,
     usuario_id          INTEGER     REFERENCES usuarios(id),
@@ -227,7 +185,6 @@ CREATE TABLE IF NOT EXISTS tb_log_sessoes (
 
 CREATE INDEX IF NOT EXISTS idx_log_sessoes_usuario ON tb_log_sessoes (usuario_id);
 
--- 1.12 tb_log_tentativas_login
 CREATE TABLE IF NOT EXISTS tb_log_tentativas_login (
     id              BIGSERIAL   PRIMARY KEY,
     email_tentado   VARCHAR     NOT NULL,
@@ -245,7 +202,6 @@ CREATE TABLE IF NOT EXISTS tb_log_tentativas_login (
 
 CREATE INDEX IF NOT EXISTS idx_login_ip ON tb_log_tentativas_login (ip_origem, tentado_em);
 
--- 1.13 tb_log_analises (duracao_segundos é coluna GERADA)
 CREATE TABLE IF NOT EXISTS tb_log_analises (
     id                  BIGSERIAL   PRIMARY KEY,
     avaliacao_id        INTEGER     NOT NULL REFERENCES tb_avaliacoes(id),
@@ -267,7 +223,6 @@ CREATE TABLE IF NOT EXISTS tb_log_analises (
 
 CREATE INDEX IF NOT EXISTS idx_log_analises_aval ON tb_log_analises (avaliacao_id);
 
--- 1.14 tb_auditoria
 CREATE TABLE IF NOT EXISTS tb_auditoria (
     id                  BIGSERIAL   PRIMARY KEY,
     usuario_id          INTEGER     REFERENCES usuarios(id),
@@ -287,11 +242,6 @@ CREATE TABLE IF NOT EXISTS tb_auditoria (
 
 CREATE INDEX IF NOT EXISTS idx_auditoria_usuario ON tb_auditoria (usuario_id);
 
--- ----------------------------------------------------------------------------
--- 2. Funções
--- ----------------------------------------------------------------------------
-
--- 2.1 Atualiza atualizado_em em qualquer UPDATE
 CREATE OR REPLACE FUNCTION fn_set_updated_at() RETURNS trigger
 LANGUAGE plpgsql AS $$
 BEGIN
@@ -300,7 +250,6 @@ BEGIN
 END;
 $$;
 
--- 2.2 INSTEAD OF INSERT da view acompanhantes (cifra o nome)
 CREATE OR REPLACE FUNCTION fn_acompanhantes_insert() RETURNS trigger
 LANGUAGE plpgsql
 SET search_path TO public, extensions AS $$
@@ -317,7 +266,6 @@ BEGIN
 END;
 $$;
 
--- 2.3 INSTEAD OF INSERT da view pacientes (cifra o nome)
 CREATE OR REPLACE FUNCTION fn_pacientes_insert() RETURNS trigger
 LANGUAGE plpgsql
 SET search_path TO public, extensions AS $$
@@ -348,7 +296,6 @@ BEGIN
 END;
 $$;
 
--- 2.4 Cálculo do escore de triagem (persiste score e finaliza a avaliação)
 CREATE OR REPLACE FUNCTION fn_calcular_score_triagem(p_avaliacao_id integer)
 RETURNS TABLE(score_final numeric, limiar_usado numeric, recomenda_exame boolean, versao_param character varying)
 LANGUAGE plpgsql AS $$
@@ -405,7 +352,6 @@ BEGIN
 END;
 $$;
 
--- 2.5 Login (verifica senha bcrypt e abre sessão)
 CREATE OR REPLACE FUNCTION fn_login(p_email text, p_senha text, p_user_agent text DEFAULT NULL::text)
 RETURNS TABLE(id integer, nome character varying, email character varying, tipo character varying, crm character varying, sessao_id bigint)
 LANGUAGE plpgsql
@@ -448,7 +394,6 @@ BEGIN
 END;
 $$;
 
--- 2.6 Logout (encerra a sessão)
 CREATE OR REPLACE FUNCTION fn_logout(p_sessao_id bigint)
 RETURNS void
 LANGUAGE plpgsql
@@ -461,7 +406,6 @@ BEGIN
 END;
 $$;
 
--- 2.7 Registro de auditoria (chamada explicitamente pela aplicação)
 CREATE OR REPLACE FUNCTION fn_registrar_auditoria(
     p_usuario_id integer, p_sessao_id bigint, p_acao character varying,
     p_tabela character varying, p_registro_id character varying,
@@ -475,10 +419,6 @@ BEGIN
   VALUES (p_usuario_id, p_sessao_id, p_acao, p_tabela, p_registro_id, p_antes, p_depois);
 END;
 $$;
-
--- ----------------------------------------------------------------------------
--- 3. Views (camada de leitura com descriptografia transparente)
--- ----------------------------------------------------------------------------
 
 CREATE OR REPLACE VIEW pacientes AS
  SELECT p.id,
@@ -549,11 +489,6 @@ CREATE OR REPLACE VIEW avaliacoes AS
     END AS recomenda_exame
    FROM tb_avaliacoes a;
 
--- ----------------------------------------------------------------------------
--- 4. Gatilhos
--- ----------------------------------------------------------------------------
-
--- INSTEAD OF INSERT nas views (cifragem do nome)
 DROP TRIGGER IF EXISTS trg_acompanhantes_insert ON acompanhantes;
 CREATE TRIGGER trg_acompanhantes_insert
     INSTEAD OF INSERT ON acompanhantes
@@ -564,7 +499,6 @@ CREATE TRIGGER trg_pacientes_insert
     INSTEAD OF INSERT ON pacientes
     FOR EACH ROW EXECUTE FUNCTION fn_pacientes_insert();
 
--- BEFORE UPDATE para manter atualizado_em
 DROP TRIGGER IF EXISTS trg_acompanhantes_upd ON tb_acompanhantes;
 CREATE TRIGGER trg_acompanhantes_upd
     BEFORE UPDATE ON tb_acompanhantes
@@ -585,9 +519,6 @@ CREATE TRIGGER trg_usuarios_upd
     BEFORE UPDATE ON usuarios
     FOR EACH ROW EXECUTE FUNCTION fn_set_updated_at();
 
--- ----------------------------------------------------------------------------
--- 5. View materializada (dashboard anonimizado)
--- ----------------------------------------------------------------------------
 CREATE MATERIALIZED VIEW IF NOT EXISTS vw_dashboard_anonimizado AS
  SELECT s.descricao AS sintoma,
     p.sexo,
@@ -608,24 +539,14 @@ CREATE MATERIALIZED VIEW IF NOT EXISTS vw_dashboard_anonimizado AS
     ((date_part('year'::text, age((p.data_nascimento)::timestamp with time zone)))::integer),
     p.etnia, p.uf_residencia, pt.versao;
 
--- Índice único: permite REFRESH CONCURRENTLY e impõe unicidade dos agregados
 CREATE UNIQUE INDEX IF NOT EXISTS uq_dash_anon
     ON vw_dashboard_anonimizado (sintoma, sexo, idade_anos, etnia, uf_residencia, versao_parametro);
 
--- ----------------------------------------------------------------------------
--- 6. Row Level Security (apenas nas tabelas de log/auditoria, sem políticas:
---    nega acesso a quem não for o proprietário; escrita via funções SECURITY DEFINER)
--- ----------------------------------------------------------------------------
 ALTER TABLE tb_log_sessoes          ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tb_log_tentativas_login ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tb_log_analises         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tb_auditoria            ENABLE ROW LEVEL SECURITY;
 
--- ----------------------------------------------------------------------------
--- 7. Dados-semente
--- ----------------------------------------------------------------------------
-
--- 7.1 Sintomas (modelo ROMERO 2025 — 12 sinais, pesos por sexo)
 INSERT INTO sintomas (id, descricao, descricao_en, peso, peso_feminino, exclusivo_masculino, ativo) VALUES
     (1,  'Deficiência intelectual',                 'Intellectual disability',             0.32, 0.20, false, true),
     (2,  'Face alongada / orelhas salientes',       'Elongated face / prominent ears',     0.29, 0.09, false, true),
@@ -642,7 +563,6 @@ INSERT INTO sintomas (id, descricao, descricao_en, peso, peso_feminino, exclusiv
 ON CONFLICT (id) DO NOTHING;
 SELECT setval('sintomas_id_seq', (SELECT COALESCE(MAX(id), 1) FROM sintomas));
 
--- 7.2 Parâmetros de triagem (limiares/AUC por sexo)
 INSERT INTO parametro_triagem (id, sexo, limiar_score, auc, sensibilidade, versao, ativo, referencia) VALUES
     (1, 'M', 0.56, 0.73, 0.95, 'ROMERO_2025_v1_M', true,
         'Romero et al. (2025). Fragile X Syndrome in Brazil. medRxiv doi: 10.1101/2025.10.21.25338500'),
@@ -651,12 +571,6 @@ INSERT INTO parametro_triagem (id, sexo, limiar_score, auc, sensibilidade, versa
 ON CONFLICT (versao) DO NOTHING;
 SELECT setval('parametro_triagem_id_seq', (SELECT COALESCE(MAX(id), 1) FROM parametro_triagem));
 
--- 7.3 Usuário administrador inicial (senha bcrypt).
---     ALTERE A SENHA após o primeiro login. Login: admin@cito.com / admin123
 INSERT INTO usuarios (nome, email, senha, tipo, ativo)
 VALUES ('Administrador', 'admin@cito.com', crypt('admin123', gen_salt('bf')), 'admin', true)
 ON CONFLICT (email) DO NOTHING;
-
--- ============================================================================
--- Fim do script.
--- ============================================================================
