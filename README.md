@@ -3,10 +3,6 @@
 </p>
 
 <p align="center">
-  Ferramenta de pré-diagnóstico da Síndrome do X Frágil (SXF) para uso clínico.
-</p>
-
-<p align="center">
   <img src="https://img.shields.io/badge/status-em%20produção-success" alt="status">
   <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
   <img src="https://img.shields.io/badge/back--end-FastAPI-009688" alt="fastapi">
