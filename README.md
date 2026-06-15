@@ -1,6 +1,4 @@
-<p align="center">
-  <img src="frontend/assets/CITO.png" alt="CITO" width="900">
-</p>
+<img width="2354" height="798" alt="CITO" src="https://github.com/user-attachments/assets/fb26cd3e-fab4-4122-b68f-46bdae439ac4" />
 
 <p align="center">
   <img src="https://img.shields.io/badge/status-em%20produção-success" alt="status">
