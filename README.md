@@ -2,6 +2,18 @@
   <img src="frontend/assets/CITO.png" alt="CITO" width="900">
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/status-em%20produção-success" alt="status">
+  <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="python">
+  <img src="https://img.shields.io/badge/back--end-FastAPI-009688" alt="fastapi">
+  <img src="https://img.shields.io/badge/front--end-React-61DAFB" alt="react">
+  <img src="https://img.shields.io/badge/banco-PostgreSQL-336791" alt="postgresql">
+  <img src="https://img.shields.io/badge/conformidade-LGPD-informational" alt="lgpd">
+</p>
+
+<p align="center">
+  <a href="https://citosina.com.br"><strong>Acessar o sistema &rarr; citosina.com.br</strong></a>
+</p>
 
 ---
 
